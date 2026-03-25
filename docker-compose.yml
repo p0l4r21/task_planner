@@ -1,0 +1,49 @@
+services:
+  # ---------- PostgreSQL ----------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-taskplanner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-taskplanner}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskplanner}"]
+      interval: 5s
+      retries: 5
+
+  # ---------- FastAPI backend ----------
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    container_name: task-planner-backend
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-taskplanner}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-taskplanner}"
+      CORS_ORIGINS: "https://${SITE_ADDRESS:-pglenn-tasks.duckdns.org}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+      - caddy_net
+
+  # ---------- Frontend (built SPA served by existing Caddy) ----------
+  frontend:
+    build: ./frontend
+    container_name: task-planner-frontend
+    restart: unless-stopped
+    # Tiny httpd serves the static files so Caddy can reverse_proxy to it
+    entrypoint: ["sh", "-c", "apk add --no-cache darkhttpd >/dev/null 2>&1 && darkhttpd /srv --port 3080 --no-listing"]
+    networks:
+      - caddy_net
+
+networks:
+  # The external network your existing Caddy (matrix-caddy) is on
+  caddy_net:
+    external: true
+    name: postgres_default
+
+volumes:
+  pgdata:

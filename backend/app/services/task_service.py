@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import csv
-import os
-import threading
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import List, Optional
 
+from ..database import SessionLocal
+from ..db_models import TaskRow
 from ..models.task import (
     DashboardSummary,
     Task,
@@ -17,70 +15,50 @@ from ..models.task import (
     TaskUpdate,
 )
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-ACTIVE_CSV = DATA_DIR / "tasks_active.csv"
-COMPLETED_CSV = DATA_DIR / "tasks_completed.csv"
 
-CSV_FIELDS = [
-    "id", "title", "description", "status", "priority", "bucket",
-    "due_date", "scheduled_date", "created_at", "updated_at",
-    "completed_at", "tags", "project", "owner", "blocked_reason", "notes",
-    "checklist_items",
-]
+# ---------------------------------------------------------------------------
+# Row <-> Pydantic conversions
+# ---------------------------------------------------------------------------
 
-_lock = threading.Lock()
-
-
-def _ensure_csv(path: Path) -> None:
-    """Create the CSV file with headers if it doesn't exist."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    if not path.exists():
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-            writer.writeheader()
-
-
-def _read_csv(path: Path) -> List[dict]:
-    _ensure_csv(path)
-    with open(path, "r", newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        rows = []
-        for row in reader:
-            # Normalise missing keys
-            for field in CSV_FIELDS:
-                if field not in row:
-                    row[field] = ""
-            rows.append(row)
-        return rows
+def _row_to_task(row: TaskRow) -> Task:
+    return Task(
+        id=row.id,
+        title=row.title,
+        description=row.description or "",
+        status=row.status,
+        priority=row.priority,
+        bucket=row.bucket,
+        due_date=row.due_date,
+        scheduled_date=row.scheduled_date,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        completed_at=row.completed_at,
+        tags=row.tags or "",
+        project=row.project or "",
+        owner=row.owner or "local_user",
+        blocked_reason=row.blocked_reason or "",
+        notes=row.notes or "",
+        checklist_items=row.checklist_items or "",
+    )
 
 
-def _write_csv(path: Path, rows: List[dict]) -> None:
-    _ensure_csv(path)
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def _append_csv(path: Path, row: dict) -> None:
-    _ensure_csv(path)
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-        writer.writerow(row)
-
-
-def _row_to_task(row: dict) -> Task:
-    return Task(**{k: (v if v != "" else None) if k in (
-        "due_date", "scheduled_date", "completed_at"
-    ) else v for k, v in row.items() if k in CSV_FIELDS})
-
-
-def _task_to_row(task: Task) -> dict:
-    d = task.model_dump()
-    for k, v in d.items():
-        if v is None:
-            d[k] = ""
-    return d
+def _apply_task_to_row(row: TaskRow, task: Task) -> None:
+    row.title = task.title
+    row.description = task.description
+    row.status = task.status.value
+    row.priority = task.priority.value
+    row.bucket = task.bucket.value
+    row.due_date = task.due_date
+    row.scheduled_date = task.scheduled_date
+    row.created_at = task.created_at
+    row.updated_at = task.updated_at
+    row.completed_at = task.completed_at
+    row.tags = task.tags
+    row.project = task.project
+    row.owner = task.owner
+    row.blocked_reason = task.blocked_reason
+    row.notes = task.notes
+    row.checklist_items = task.checklist_items
 
 
 # ---------------------------------------------------------------------------
@@ -88,9 +66,8 @@ def _task_to_row(task: Task) -> dict:
 # ---------------------------------------------------------------------------
 
 def _smart_bucket(due_date: Optional[str], bucket: TaskBucket) -> TaskBucket:
-    """Assign bucket based on due_date proximity if user left default."""
     if bucket != TaskBucket.INCOMING:
-        return bucket  # user explicitly chose
+        return bucket
     if not due_date:
         return TaskBucket.INCOMING
     try:
@@ -123,8 +100,12 @@ def create_task(data: TaskCreate) -> Task:
         project=data.project,
         checklist_items=data.checklist_items,
     )
-    with _lock:
-        _append_csv(ACTIVE_CSV, _task_to_row(task))
+    with SessionLocal() as db:
+        row = TaskRow(is_completed=False)
+        _apply_task_to_row(row, task)
+        row.id = task.id
+        db.add(row)
+        db.commit()
     return task
 
 
@@ -138,23 +119,25 @@ def list_active_tasks(
     sort_by: Optional[str] = None,
     sort_dir: str = "asc",
 ) -> List[Task]:
-    with _lock:
-        rows = _read_csv(ACTIVE_CSV)
+    with SessionLocal() as db:
+        q = db.query(TaskRow).filter(TaskRow.is_completed == False)
+        if bucket:
+            q = q.filter(TaskRow.bucket == bucket)
+        if priority:
+            q = q.filter(TaskRow.priority == priority)
+        if due_date:
+            q = q.filter(TaskRow.due_date.ilike(f"{due_date[:10]}%"))
+        rows = q.all()
+
     tasks = [_row_to_task(r) for r in rows]
 
-    if bucket:
-        tasks = [t for t in tasks if t.bucket.value == bucket]
-    if priority:
-        tasks = [t for t in tasks if t.priority.value == priority]
     if tag:
         tasks = [t for t in tasks if tag.lower() in t.tags.lower()]
     if project:
         tasks = [t for t in tasks if project.lower() in t.project.lower()]
-    if due_date:
-        tasks = [t for t in tasks if t.due_date and t.due_date[:10] == due_date[:10]]
     if search:
-        q = search.lower()
-        tasks = [t for t in tasks if q in t.title.lower() or q in t.description.lower() or q in t.notes.lower()]
+        sq = search.lower()
+        tasks = [t for t in tasks if sq in t.title.lower() or sq in t.description.lower() or sq in t.notes.lower()]
 
     if sort_by:
         priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -172,18 +155,19 @@ def list_active_tasks(
 
 
 def get_task(task_id: str) -> Optional[Task]:
-    with _lock:
-        rows = _read_csv(ACTIVE_CSV)
-    for r in rows:
-        if r["id"] == task_id:
-            return _row_to_task(r)
-    return None
+    with SessionLocal() as db:
+        row = db.query(TaskRow).filter(
+            TaskRow.id == task_id,
+            TaskRow.is_completed == False,
+        ).first()
+    if row is None:
+        return None
+    return _row_to_task(row)
 
 
 def list_calendar_tasks(start: str, end: str) -> List[Task]:
-    """Return active tasks whose effective date (scheduled_date or due_date) falls in [start, end]."""
-    with _lock:
-        rows = _read_csv(ACTIVE_CSV)
+    with SessionLocal() as db:
+        rows = db.query(TaskRow).filter(TaskRow.is_completed == False).all()
     tasks = [_row_to_task(r) for r in rows]
     result = []
     for t in tasks:
@@ -194,32 +178,29 @@ def list_calendar_tasks(start: str, end: str) -> List[Task]:
 
 
 def update_task(task_id: str, data: TaskUpdate) -> Optional[Task]:
-    with _lock:
-        rows = _read_csv(ACTIVE_CSV)
-        updated = False
-        for i, r in enumerate(rows):
-            if r["id"] == task_id:
-                task = _row_to_task(r)
-                update_data = data.model_dump(exclude_unset=True)
-                for k, v in update_data.items():
-                    setattr(task, k, v)
-                # Sync status ↔ bucket
-                if "bucket" in update_data and "status" not in update_data:
-                    bv = task.bucket.value
-                    if bv in [s.value for s in TaskStatus]:
-                        task.status = TaskStatus(bv)
-                if "status" in update_data and "bucket" not in update_data:
-                    sv = task.status.value
-                    if sv in [b.value for b in TaskBucket]:
-                        task.bucket = TaskBucket(sv)
-                task.updated_at = datetime.now().isoformat()
-                rows[i] = _task_to_row(task)
-                updated = True
-                break
-        if not updated:
+    with SessionLocal() as db:
+        row = db.query(TaskRow).filter(
+            TaskRow.id == task_id,
+            TaskRow.is_completed == False,
+        ).first()
+        if row is None:
             return None
-        _write_csv(ACTIVE_CSV, rows)
-        return _row_to_task(rows[i])
+        task = _row_to_task(row)
+        update_data = data.model_dump(exclude_unset=True)
+        for k, v in update_data.items():
+            setattr(task, k, v)
+        if "bucket" in update_data and "status" not in update_data:
+            bv = task.bucket.value
+            if bv in [s.value for s in TaskStatus]:
+                task.status = TaskStatus(bv)
+        if "status" in update_data and "bucket" not in update_data:
+            sv = task.status.value
+            if sv in [b.value for b in TaskBucket]:
+                task.bucket = TaskBucket(sv)
+        task.updated_at = datetime.now().isoformat()
+        _apply_task_to_row(row, task)
+        db.commit()
+        return task
 
 
 def move_task(task_id: str, data: TaskMove) -> Optional[Task]:
@@ -227,25 +208,22 @@ def move_task(task_id: str, data: TaskMove) -> Optional[Task]:
 
 
 def complete_task(task_id: str) -> Optional[Task]:
-    with _lock:
-        rows = _read_csv(ACTIVE_CSV)
-        target = None
-        remaining = []
-        for r in rows:
-            if r["id"] == task_id:
-                target = r
-            else:
-                remaining.append(r)
-        if target is None:
+    with SessionLocal() as db:
+        row = db.query(TaskRow).filter(
+            TaskRow.id == task_id,
+            TaskRow.is_completed == False,
+        ).first()
+        if row is None:
             return None
-        task = _row_to_task(target)
+        task = _row_to_task(row)
         task.status = TaskStatus.COMPLETED
         task.bucket = TaskBucket.COMPLETED
         task.completed_at = datetime.now().isoformat()
         task.updated_at = datetime.now().isoformat()
-        _write_csv(ACTIVE_CSV, remaining)
-        _append_csv(COMPLETED_CSV, _task_to_row(task))
-    return task
+        _apply_task_to_row(row, task)
+        row.is_completed = True
+        db.commit()
+        return task
 
 
 def list_completed_tasks(
@@ -255,17 +233,19 @@ def list_completed_tasks(
     sort_by: Optional[str] = None,
     sort_dir: str = "desc",
 ) -> List[Task]:
-    with _lock:
-        rows = _read_csv(COMPLETED_CSV)
+    with SessionLocal() as db:
+        q = db.query(TaskRow).filter(TaskRow.is_completed == True)
+        if priority:
+            q = q.filter(TaskRow.priority == priority)
+        rows = q.all()
+
     tasks = [_row_to_task(r) for r in rows]
 
     if search:
-        q = search.lower()
-        tasks = [t for t in tasks if q in t.title.lower() or q in t.description.lower()]
+        sq = search.lower()
+        tasks = [t for t in tasks if sq in t.title.lower() or sq in t.description.lower()]
     if project:
         tasks = [t for t in tasks if project.lower() in t.project.lower()]
-    if priority:
-        tasks = [t for t in tasks if t.priority.value == priority]
 
     reverse = sort_dir == "desc"
     if sort_by == "completed_at":
@@ -280,50 +260,44 @@ def list_completed_tasks(
 
 
 def restore_task(task_id: str) -> Optional[Task]:
-    with _lock:
-        rows = _read_csv(COMPLETED_CSV)
-        target = None
-        remaining = []
-        for r in rows:
-            if r["id"] == task_id:
-                target = r
-            else:
-                remaining.append(r)
-        if target is None:
+    with SessionLocal() as db:
+        row = db.query(TaskRow).filter(
+            TaskRow.id == task_id,
+            TaskRow.is_completed == True,
+        ).first()
+        if row is None:
             return None
-        task = _row_to_task(target)
+        task = _row_to_task(row)
         task.status = TaskStatus.INCOMING
         task.bucket = TaskBucket.BACKLOG
         task.completed_at = None
         task.updated_at = datetime.now().isoformat()
-        _write_csv(COMPLETED_CSV, remaining)
-        _append_csv(ACTIVE_CSV, _task_to_row(task))
-    return task
+        _apply_task_to_row(row, task)
+        row.is_completed = False
+        db.commit()
+        return task
 
 
 def delete_task(task_id: str) -> bool:
-    with _lock:
-        rows = _read_csv(ACTIVE_CSV)
-        new_rows = [r for r in rows if r["id"] != task_id]
-        if len(new_rows) == len(rows):
+    with SessionLocal() as db:
+        row = db.query(TaskRow).filter(TaskRow.id == task_id).first()
+        if row is None:
             return False
-        _write_csv(ACTIVE_CSV, new_rows)
+        db.delete(row)
+        db.commit()
     return True
 
 
 def get_dashboard_summary() -> DashboardSummary:
-    with _lock:
-        active_rows = _read_csv(ACTIVE_CSV)
-        completed_rows = _read_csv(COMPLETED_CSV)
+    with SessionLocal() as db:
+        active_rows = db.query(TaskRow).filter(TaskRow.is_completed == False).all()
+        week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+        completed_this_week = db.query(TaskRow).filter(
+            TaskRow.is_completed == True,
+            TaskRow.completed_at >= week_ago,
+        ).count()
 
     active_tasks = [_row_to_task(r) for r in active_rows]
-    completed_tasks = [_row_to_task(r) for r in completed_rows]
-
-    week_ago = (datetime.now() - timedelta(days=7)).isoformat()
-    completed_this_week = sum(
-        1 for t in completed_tasks
-        if t.completed_at and t.completed_at >= week_ago
-    )
 
     return DashboardSummary(
         active_count=len(active_tasks),

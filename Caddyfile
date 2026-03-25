@@ -1,0 +1,33 @@
+# Replace tasks.example.com with your actual domain or subdomain.
+# Caddy automatically provisions Let's Encrypt TLS certificates.
+#
+# The basicauth block protects the entire site with a username/password.
+# Generate a hashed password with:   caddy hash-password
+# Then replace the hash below.
+
+{$SITE_ADDRESS:tasks.example.com} {
+	# --- HTTP Basic Auth (protects everything) ---
+	basicauth * {
+		{$AUTH_USER:admin} {$AUTH_PASS_HASH:$2a$14$REPLACE_ME_WITH_CADDY_HASH_PASSWORD_OUTPUT}
+	}
+
+	# --- API: proxy to FastAPI backend ---
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# --- Frontend: serve built SPA files ---
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+	}
+}

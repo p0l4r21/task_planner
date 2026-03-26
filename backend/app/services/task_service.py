@@ -34,7 +34,10 @@ def _row_to_task(row: TaskRow) -> Task:
         updated_at=row.updated_at,
         completed_at=row.completed_at,
         tags=row.tags or "",
+        project_id=row.project_id,
         project=row.project or "",
+        parent_milestone_id=row.parent_milestone_id,
+        hierarchy_level=row.hierarchy_level or 0,
         owner=row.owner or "local_user",
         blocked_reason=row.blocked_reason or "",
         notes=row.notes or "",
@@ -54,7 +57,10 @@ def _apply_task_to_row(row: TaskRow, task: Task) -> None:
     row.updated_at = task.updated_at
     row.completed_at = task.completed_at
     row.tags = task.tags
+    row.project_id = task.project_id
     row.project = task.project
+    row.parent_milestone_id = task.parent_milestone_id
+    row.hierarchy_level = task.hierarchy_level
     row.owner = task.owner
     row.blocked_reason = task.blocked_reason
     row.notes = task.notes
@@ -97,7 +103,12 @@ def create_task(data: TaskCreate) -> Task:
         due_date=data.due_date,
         scheduled_date=data.scheduled_date,
         tags=data.tags,
+        project_id=data.project_id,
         project=data.project,
+        parent_milestone_id=data.parent_milestone_id,
+        hierarchy_level=data.hierarchy_level,
+        blocked_reason=data.blocked_reason,
+        notes=data.notes,
         checklist_items=data.checklist_items,
     )
     with SessionLocal() as db:
@@ -127,14 +138,14 @@ def list_active_tasks(
             q = q.filter(TaskRow.priority == priority)
         if due_date:
             q = q.filter(TaskRow.due_date.ilike(f"{due_date[:10]}%"))
+        if project:
+            q = q.filter((TaskRow.project.ilike(f"%{project}%")) | (TaskRow.project_id == project))
         rows = q.all()
 
     tasks = [_row_to_task(r) for r in rows]
 
     if tag:
         tasks = [t for t in tasks if tag.lower() in t.tags.lower()]
-    if project:
-        tasks = [t for t in tasks if project.lower() in t.project.lower()]
     if search:
         sq = search.lower()
         tasks = [t for t in tasks if sq in t.title.lower() or sq in t.description.lower() or sq in t.notes.lower()]
@@ -237,6 +248,8 @@ def list_completed_tasks(
         q = db.query(TaskRow).filter(TaskRow.is_completed == True)
         if priority:
             q = q.filter(TaskRow.priority == priority)
+        if project:
+            q = q.filter((TaskRow.project.ilike(f"%{project}%")) | (TaskRow.project_id == project))
         rows = q.all()
 
     tasks = [_row_to_task(r) for r in rows]
@@ -244,9 +257,6 @@ def list_completed_tasks(
     if search:
         sq = search.lower()
         tasks = [t for t in tasks if sq in t.title.lower() or sq in t.description.lower()]
-    if project:
-        tasks = [t for t in tasks if project.lower() in t.project.lower()]
-
     reverse = sort_dir == "desc"
     if sort_by == "completed_at":
         tasks.sort(key=lambda t: t.completed_at or "", reverse=reverse)

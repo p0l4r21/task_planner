@@ -11,11 +11,15 @@ export default function App() {
   return (
     <div className="app">
       <header className="top-bar">
-        <div className="top-bar-brand">Task Planner</div>
+        <div className="top-bar-brand-wrap">
+          <span className="top-bar-kicker">Weekly workspace</span>
+          <div className="top-bar-brand-row">
+            <div className="top-bar-brand">Task Planner</div>
+            <span className="top-bar-badge">Responsive planner</span>
+          </div>
+        </div>
         <nav className="top-bar-nav">
-          <NavLink to="/" end>Dashboard</NavLink>
-          <NavLink to="/tasks">Active</NavLink>
-          <NavLink to="/projects">Projects</NavLink>
+          <NavLink to="/" end>Planner</NavLink>
           <NavLink to="/calendar">Calendar</NavLink>
           <NavLink to="/completed">Completed</NavLink>
           <NavLink to="/settings">Settings</NavLink>

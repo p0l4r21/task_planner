@@ -21,7 +21,10 @@ export interface Task {
   updated_at: string;
   completed_at: string | null;
   tags: string;
+  project_id: string | null;
   project: string;
+  parent_milestone_id: string | null;
+  hierarchy_level: number;
   owner: string;
   blocked_reason: string;
   notes: string;
@@ -35,8 +38,13 @@ export interface TaskCreate {
   due_date?: string | null;
   scheduled_date?: string | null;
   tags?: string;
+  project_id?: string | null;
   project?: string;
+  parent_milestone_id?: string | null;
+  hierarchy_level?: number;
   bucket?: TaskBucket;
+  blocked_reason?: string;
+  notes?: string;
   checklist_items?: string;
 }
 
@@ -49,7 +57,10 @@ export interface TaskUpdate {
   due_date?: string | null;
   scheduled_date?: string | null;
   tags?: string;
+  project_id?: string | null;
   project?: string;
+  parent_milestone_id?: string | null;
+  hierarchy_level?: number;
   owner?: string;
   blocked_reason?: string;
   notes?: string;

@@ -106,6 +106,18 @@ def _join_ids(ids: List[str]) -> str:
     return ",".join(ids)
 
 
+def _milestone_depth(milestone_id: Optional[str], milestones: List[Milestone]) -> int:
+    if not milestone_id:
+        return 0
+    milestone_map = {milestone.id: milestone for milestone in milestones}
+    depth = 0
+    current_id = milestone_id
+    while current_id and current_id in milestone_map:
+        depth += 1
+        current_id = milestone_map[current_id].parent_milestone_id
+    return depth
+
+
 # ===================================================================
 # PROJECT CRUD
 # ===================================================================
@@ -157,6 +169,9 @@ def delete_project(project_id: str) -> bool:
         db.delete(row)
         # Also delete milestones belonging to this project
         db.query(MilestoneRow).filter(MilestoneRow.project_id == project_id).delete()
+        task_rows = task_service.list_active_tasks(project=project_id)
+        for task in task_rows:
+            task_service.update_task(task.id, TaskUpdate(project_id=None, project="", parent_milestone_id=None, hierarchy_level=0))
         db.commit()
     return True
 
@@ -252,6 +267,10 @@ def complete_milestone(milestone_id: str) -> Optional[Milestone]:
 # ===================================================================
 
 def link_task(milestone_id: str, task_id: str) -> Optional[Milestone]:
+    milestone = get_milestone(milestone_id)
+    if milestone is None:
+        return None
+    project = get_project(milestone.project_id)
     with SessionLocal() as db:
         row = db.query(MilestoneRow).filter(MilestoneRow.id == milestone_id).first()
         if row is None:
@@ -262,7 +281,15 @@ def link_task(milestone_id: str, task_id: str) -> Optional[Milestone]:
             row.task_ids = _join_ids(ids)
             row.updated_at = datetime.now().isoformat()
         db.commit()
-        return _row_to_milestone(row)
+        linked = _row_to_milestone(row)
+
+    task_service.update_task(task_id, TaskUpdate(
+        project_id=linked.project_id,
+        project=project.name if project else "",
+        parent_milestone_id=linked.id,
+        hierarchy_level=_milestone_depth(linked.id, list_milestones(linked.project_id)),
+    ))
+    return linked
 
 
 def unlink_task(milestone_id: str, task_id: str) -> Optional[Milestone]:
@@ -276,7 +303,10 @@ def unlink_task(milestone_id: str, task_id: str) -> Optional[Milestone]:
             row.task_ids = _join_ids(ids)
             row.updated_at = datetime.now().isoformat()
         db.commit()
-        return _row_to_milestone(row)
+        updated = _row_to_milestone(row)
+
+    task_service.update_task(task_id, TaskUpdate(parent_milestone_id=None, hierarchy_level=0))
+    return updated
 
 
 def link_milestones(milestone_id: str, target_milestone_id: str) -> Optional[Milestone]:
@@ -485,7 +515,7 @@ def discover_project_tasks(project_id: str) -> List[Task]:
     project = get_project(project_id)
     if not project:
         return []
-    return task_service.list_active_tasks(project=project.name)
+    return task_service.list_active_tasks(project=project.id)
 
 
 # ===================================================================

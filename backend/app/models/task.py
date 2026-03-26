@@ -47,7 +47,10 @@ class Task(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     completed_at: Optional[str] = None
     tags: str = ""
+    project_id: Optional[str] = None
     project: str = ""
+    parent_milestone_id: Optional[str] = None
+    hierarchy_level: int = 0
     owner: str = "local_user"
     blocked_reason: str = ""
     notes: str = ""
@@ -61,8 +64,13 @@ class TaskCreate(BaseModel):
     due_date: Optional[str] = None
     scheduled_date: Optional[str] = None
     tags: str = ""
+    project_id: Optional[str] = None
     project: str = ""
+    parent_milestone_id: Optional[str] = None
+    hierarchy_level: int = 0
     bucket: TaskBucket = TaskBucket.INCOMING
+    blocked_reason: str = ""
+    notes: str = ""
     checklist_items: str = ""
 
 
@@ -75,7 +83,10 @@ class TaskUpdate(BaseModel):
     due_date: Optional[str] = None
     scheduled_date: Optional[str] = None
     tags: Optional[str] = None
+    project_id: Optional[str] = None
     project: Optional[str] = None
+    parent_milestone_id: Optional[str] = None
+    hierarchy_level: Optional[int] = None
     owner: Optional[str] = None
     blocked_reason: Optional[str] = None
     notes: Optional[str] = None

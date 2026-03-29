@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import type { Task } from '../types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   tasks: Task[];
@@ -31,21 +35,19 @@ export default function LinkTaskModal({ tasks, linkedTaskIds, onLink, onClose }:
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-sm" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Link Existing Task</h3>
-          <button className="btn btn-sm" onClick={onClose}>✕</button>
-        </div>
-        <input
+    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Link Existing Task</DialogTitle>
+        </DialogHeader>
+        <Input
           type="text"
-          className="quick-add-input"
           placeholder="Search tasks…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           autoFocus
         />
-        <div className="link-list">
+        <ScrollArea className="link-list">
           {available.length === 0 && (
             <div className="link-list-empty">No tasks available to link</div>
           )}
@@ -58,17 +60,18 @@ export default function LinkTaskModal({ tasks, linkedTaskIds, onLink, onClose }:
                 <span className="link-list-title">{t.title}</span>
                 {t.project && <span className="tag tag-project">{t.project}</span>}
               </div>
-              <button
-                className="btn btn-xs btn-primary"
+              <Button
+                variant="default"
+                size="xs"
                 onClick={() => handleLink(t.id)}
                 disabled={linking === t.id}
               >
                 {linking === t.id ? '…' : 'Link'}
-              </button>
+              </Button>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }

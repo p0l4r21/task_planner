@@ -3,6 +3,9 @@ import type { Task, TaskCreate, TaskUpdate, TaskPriority, CalendarMilestone } fr
 import { PRIORITY_LABELS } from '../types';
 import { api } from '../api';
 import TaskForm from '../components/TaskForm';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ── helpers ────────────────────────────────────────────────────────
 function pad(n: number) { return String(n).padStart(2, '0'); }
@@ -168,18 +171,23 @@ export default function CalendarPage() {
       <div className="page-header">
         <h2>Calendar</h2>
         <div className="cal-controls">
-          <button className="btn btn-sm" onClick={goToday}>Today</button>
-          <button className="btn btn-sm" onClick={view === 'month' ? prevMonth : prevWeek}>◀</button>
+          <Button variant="ghost" size="sm" onClick={goToday}>Today</Button>
+          <Button variant="ghost" size="sm" onClick={view === 'month' ? prevMonth : prevWeek}>◀</Button>
           <span className="cal-title">
             {view === 'month'
               ? `${MONTH_NAMES[month]} ${year}`
               : `Week of ${fmtDate(weekStart)}`}
           </span>
-          <button className="btn btn-sm" onClick={view === 'month' ? nextMonth : nextWeek}>▶</button>
-          <select className="btn btn-sm" value={view} onChange={e => setView(e.target.value as ViewMode)} title="View mode">
-            <option value="month">Month</option>
-            <option value="week">Week</option>
-          </select>
+          <Button variant="ghost" size="sm" onClick={view === 'month' ? nextMonth : nextWeek}>▶</Button>
+          <Select value={view} onValueChange={v => setView(v as ViewMode)}>
+            <SelectTrigger className="w-auto" title="View mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Month</SelectItem>
+              <SelectItem value="week">Week</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -235,17 +243,17 @@ export default function CalendarPage() {
           <div className="cal-quick-add" onClick={e => e.stopPropagation()}>
             <div className="cal-quick-add-header">
               <span>Add task for <strong>{quickAddDate}</strong></span>
-              <button className="btn btn-sm" onClick={() => setQuickAddDate(null)}>✕</button>
+              <Button variant="ghost" size="sm" onClick={() => setQuickAddDate(null)}>✕</Button>
             </div>
             <form className="cal-quick-add-form" onSubmit={e => { e.preventDefault(); handleQuickAdd(); }}>
-              <input
+              <Input
                 type="text"
                 placeholder="Task title…"
                 value={quickAddTitle}
                 onChange={e => setQuickAddTitle(e.target.value)}
                 autoFocus
               />
-              <button type="submit" className="btn btn-primary btn-sm" disabled={!quickAddTitle.trim()}>Add</button>
+              <Button variant="default" size="sm" type="submit" disabled={!quickAddTitle.trim()}>Add</Button>
             </form>
           </div>
         </div>

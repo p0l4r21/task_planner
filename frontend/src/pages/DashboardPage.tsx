@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import PlannerDrawer, { type PlannerDrawerState } from '../components/PlannerDrawer';
-import PlannerProjectTree from '../components/PlannerProjectTree';
+import { type PlannerDrawerState } from '../components/PlannerDrawer';
+import WeekBar from '../components/WeekBar';
+import RightPanel from '../components/RightPanel';
+import LaneQuickAdd from '../components/LaneQuickAdd';
 import { api } from '../api';
 import { useProjects } from '../hooks/useProjects';
 import { useSummary, useTasks } from '../hooks/useTasks';
@@ -18,8 +20,9 @@ import type {
   TaskPriority,
   TaskUpdate,
 } from '../types';
+import { Button } from '@/components/ui/button';
 
-type PlannerLane = 'overdue' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'later';
+type PlannerLane = 'overdue' | 'today' | 'this_week' | 'later';
 
 interface FilterState {
   search: string;
@@ -33,21 +36,18 @@ const EMPTY_FILTERS: FilterState = {
   projectId: '',
 };
 
-const WEEKDAY_LANES: PlannerLane[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-const PLANNER_LANES: PlannerLane[] = ['overdue', ...WEEKDAY_LANES, 'later'];
-const WEEKDAY_LABELS: Record<PlannerLane, string> = {
+const DROPPABLE_LANES: PlannerLane[] = ['today', 'this_week', 'later'];
+const PLANNER_LANES: PlannerLane[] = ['overdue', ...DROPPABLE_LANES];
+const LANE_LABELS: Record<PlannerLane, string> = {
   overdue: 'Overdue',
-  monday: 'Mon',
-  tuesday: 'Tue',
-  wednesday: 'Wed',
-  thursday: 'Thu',
-  friday: 'Fri',
+  today: 'Today',
+  this_week: 'This Week',
   later: 'Later',
 };
 
 export default function DashboardPage() {
   const { tasks, loading, create, update, complete, remove, refresh } = useTasks();
-  const { summary, refresh: refreshSummary } = useSummary();
+  const { refresh: refreshSummary } = useSummary();
   const {
     projects,
     create: createProject,
@@ -134,14 +134,7 @@ export default function DashboardPage() {
   }, [activeProjects, selectedProjectId]);
 
   const weekStart = useMemo(() => startOfPlannerWeek(new Date(), weekOffset), [weekOffset]);
-  const weekDates = useMemo(
-    () => WEEKDAY_LANES.map((lane, index) => ({ lane, date: toISODate(addDays(weekStart, index)) })),
-    [weekStart],
-  );
-  const weekDateMap = useMemo(
-    () => Object.fromEntries(weekDates.map(entry => [entry.lane, entry.date])) as Record<string, string>,
-    [weekDates],
-  );
+  const weekEnd = useMemo(() => addDays(weekStart, 4), [weekStart]); // Friday
 
   const filteredTasks = useMemo(() => {
     const searchNeedle = filters.search.trim().toLowerCase();
@@ -159,7 +152,7 @@ export default function DashboardPage() {
   const laneGroups = useMemo(() => {
     const groups = Object.fromEntries(PLANNER_LANES.map(lane => [lane, [] as Task[]])) as Record<PlannerLane, Task[]>;
     for (const task of filteredTasks) {
-      const lane = getPlannerLane(task, weekStart, weekDateMap);
+      const lane = getPlannerLane(task, weekStart, weekEnd);
       groups[lane].push(task);
     }
     for (const lane of PLANNER_LANES) {
@@ -171,23 +164,17 @@ export default function DashboardPage() {
       });
     }
     return groups;
-  }, [filteredTasks, weekDateMap, weekStart]);
+  }, [filteredTasks, weekStart, weekEnd]);
 
-  const overdueCount = laneGroups.overdue.length;
-  const plannedThisWeekCount = WEEKDAY_LANES.reduce((count, lane) => count + laneGroups[lane].length, 0);
   const heroProjectCopy = selectedProject?.description?.trim() || 'Keep the board aligned with the project tree so delivery work stays attached to real structure.';
-  const weekRangeLabel = `${formatDisplayDate(weekDates[0]?.date)} - ${formatDisplayDate(weekDates[weekDates.length - 1]?.date)}`;
-  const isTaskActionActive = drawerState?.type === 'task-create';
-  const isMilestoneActionActive = drawerState?.type === 'milestone-create';
-  const isProjectActionActive = drawerState?.type === 'project-create';
+  const weekRangeLabel = `${formatDisplayDate(toISODate(weekStart))} – ${formatDisplayDate(toISODate(weekEnd))}`;
 
   const openCreateTask = (projectId?: string, parentMilestoneId?: string | null, lane?: PlannerLane) => {
     setDrawerState({
       type: 'task-create',
       defaults: {
-        bucket: lane ? bucketForLane(lane, weekDateMap) : 'this_week',
-        scheduled_date: lane ? scheduledDateForLane(lane, weekDateMap) : null,
-        due_date: lane === 'overdue' ? toISODate(new Date()) : null,
+        bucket: lane ? bucketForLane(lane) : 'this_week',
+        scheduled_date: lane ? scheduledDateForLane(lane) : null,
         project_id: projectId || selectedProjectId || undefined,
         parent_milestone_id: parentMilestoneId || undefined,
       },
@@ -255,14 +242,13 @@ export default function DashboardPage() {
   };
 
   const handleDropToLane = async (lane: PlannerLane) => {
-    if (!dragTaskId) return;
+    if (!dragTaskId || lane === 'overdue') return;
     const task = tasks.find(candidate => candidate.id === dragTaskId);
     if (!task) return;
     setDragTaskId(null);
     await handleUpdateTask(task, {
-      scheduled_date: scheduledDateForLane(lane, weekDateMap),
-      due_date: lane === 'overdue' ? toISODate(addDays(new Date(), -1)) : task.due_date,
-      bucket: bucketForLane(lane, weekDateMap),
+      scheduled_date: scheduledDateForLane(lane),
+      bucket: bucketForLane(lane),
     });
   };
 
@@ -280,230 +266,110 @@ export default function DashboardPage() {
 
   return (
     <div className="planner-page">
-      <section className="planner-shell">
-        <div className="planner-topbar">
-          <div className="planner-week-card">
-            <span className="planner-eyebrow">Week window</span>
-            <div className="planner-week-window compact">
-              <span>Week of {formatDisplayDate(weekDates[0]?.date, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-              <strong>{weekRangeLabel}</strong>
-              <p className="planner-week-note">Use the board as a weekly storyboard. Keep scheduling, creation, and editing in the same band above the board.</p>
-            </div>
-            <div className="planner-week-actions">
-              <div className="planner-action-group planner-action-group-nav">
-                <button className="btn btn-ghost" onClick={() => setWeekOffset(offset => offset - 1)}>Previous week</button>
-                <button className="btn btn-secondary" onClick={() => setWeekOffset(0)}>Current week</button>
-                <button className="btn btn-ghost" onClick={() => setWeekOffset(offset => offset + 1)}>Next week</button>
-              </div>
-              <div className="planner-action-group planner-action-group-primary">
-                <button className={`btn ${isTaskActionActive ? 'btn-primary' : 'btn-secondary'}`} onClick={() => openCreateTask(selectedProjectId || undefined)}>New task</button>
-                <button className={`btn ${isMilestoneActionActive ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDrawerState({ type: 'milestone-create', projectId: selectedProjectId || projectOptions[0]?.id || '' })} disabled={!projectOptions.length}>New milestone</button>
-                <button className={`btn ${isProjectActionActive ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDrawerState({ type: 'project-create' })}>New project</button>
-              </div>
-            </div>
-          </div>
-          <div className="planner-topbar-side">
-            <div className="planner-focus-card">
-              <span className="planner-eyebrow">Project workspace</span>
-              <div className="planner-focus-header">
-                <div>
-                  <strong>{selectedProject?.name || 'Portfolio overview'}</strong>
-                  <p>{heroProjectCopy}</p>
-                </div>
-                {selectedProject && (
-                  <span className={`planner-project-status planner-project-status-${selectedProject.status}`}>
-                    {selectedProject.status.replace('_', ' ')}
-                  </span>
-                )}
-              </div>
-              <div className="planner-focus-metrics">
-                <div className="planner-focus-metric">
-                  <span>Milestone map</span>
-                  <strong>{selectedProjectCompletedMilestones}/{selectedProjectMilestones.length || 0}</strong>
-                </div>
-                <div className="planner-focus-metric">
-                  <span>Open work</span>
-                  <strong>{selectedProjectTaskCount}</strong>
-                </div>
-                <div className="planner-focus-metric planner-focus-metric-wide">
-                  <span>Next target</span>
-                  <strong>{selectedProjectNextMilestone ? formatDisplayDate(selectedProjectNextMilestone.due_date) : 'No due date'}</strong>
-                </div>
-              </div>
-              <div className="planner-focus-progress">
-                <div className="planner-focus-progress-bar">
-                  <div className="planner-focus-progress-fill" style={{ width: `${selectedProjectProgress}%` }} />
-                </div>
-                <span>{selectedProjectProgress}% mapped</span>
-              </div>
+      <WeekBar
+        weekRangeLabel={weekRangeLabel}
+        weekOffset={weekOffset}
+        onChangeWeek={setWeekOffset}
+        onCreate={() => openCreateTask(selectedProjectId || undefined)}
+        filterSearch={filters.search}
+        onFilterChange={patch => setFilters(current => ({
+          ...current,
+          search: patch.search ?? current.search,
+          priority: (patch.priority ?? current.priority) as FilterState['priority'],
+          projectId: patch.projectId ?? current.projectId,
+        }))}
+      />
 
-              {activeProjects.length > 1 && (
-                <div className="planner-project-switcher">
-                  <span className="planner-focus-label">Active projects</span>
-                  <div className="planner-project-pills">
-                    {activeProjects.map(project => (
-                      <button
-                        key={project.id}
-                        type="button"
-                        className={`planner-project-pill${selectedProjectId === project.id ? ' active' : ''}`}
-                        onClick={() => setSelectedProjectId(project.id)}
-                      >
-                        {project.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="planner-focus-structure">
-                <PlannerProjectTree
-                  projects={selectedProject ? [selectedProject] : []}
-                  milestonesByProject={milestonesByProject}
-                  tasks={tasks}
-                  selectedProjectId={selectedProjectId}
-                  onSelectProject={setSelectedProjectId}
-                  onCreateTask={openCreateTask}
-                  onCreateMilestone={(projectId, parentMilestoneId) => setDrawerState({ type: 'milestone-create', projectId, parentMilestoneId })}
-                  onEditProject={project => setDrawerState({ type: 'project-edit', project })}
-                  onEditMilestone={milestone => setDrawerState({ type: 'milestone-edit', milestone })}
-                  variant="embedded"
-                />
-              </div>
-            </div>
-          </div>
-
-          <PlannerDrawer
-            state={drawerState}
-            projects={projectOptions}
-            milestonesByProject={milestonesByProject}
-            onClose={() => setDrawerState(null)}
-            onCreateTask={handleCreateTask}
-            onUpdateTask={handleUpdateTask}
-            onCreateProject={handleCreateProject}
-            onUpdateProject={handleUpdateProject}
-            onCreateMilestone={handleCreateMilestone}
-            onUpdateMilestone={handleUpdateMilestone}
-          />
-        </div>
-
-        <div className="planner-toolbar">
-          <div className="planner-toolbar-section planner-toolbar-section-stats">
-            <div className="planner-stats-row">
-              <div className="planner-stat-card">
-                <span>Active tasks</span>
-                <strong>{summary?.active_count ?? tasks.length}</strong>
-              </div>
-              <div className="planner-stat-card">
-                <span>Planned</span>
-                <strong>{plannedThisWeekCount}</strong>
-              </div>
-              <div className="planner-stat-card alert">
-                <span>Overdue</span>
-                <strong>{overdueCount}</strong>
-              </div>
-              <div className="planner-stat-card">
-                <span>Active projects</span>
-                <strong>{activeProjects.length}</strong>
-              </div>
-            </div>
-          </div>
-          <div className="planner-toolbar-section planner-toolbar-section-filters">
-            <span className="planner-eyebrow">Filter workspace</span>
-            <div className="planner-filter-row">
-              <input
-                type="search"
-                placeholder="Search tasks, notes, projects"
-                value={filters.search}
-                onChange={event => setFilters(current => ({ ...current, search: event.target.value }))}
-              />
-              <select value={filters.projectId} onChange={event => setFilters(current => ({ ...current, projectId: event.target.value }))}>
-                <option value="">All projects</option>
-                {projectOptions.map(project => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
-                ))}
-              </select>
-              <select value={filters.priority} onChange={event => setFilters(current => ({ ...current, priority: event.target.value as FilterState['priority'] }))}>
-                <option value="">Any priority</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="planner-layout">
-          <section className="planner-board-panel">
-            <div className="planner-panel-header">
-              <div>
-                <span className="planner-eyebrow">Weekly board</span>
-                <h3>Execution lanes</h3>
-              </div>
-              <span className="planner-board-caption">Drag tasks to re-plan the week.</span>
-            </div>
-
-            <div className="planner-board">
-              {PLANNER_LANES.map(lane => (
+      <div className="planner-body">
+        {/* Board — the primary content area */}
+        <section className="planner-board-panel">
+          <div className="planner-board">
+            {PLANNER_LANES.map(lane => {
+              const isDroppable = lane !== 'overdue';
+              return (
                 <div
                   key={lane}
-                  className={`planner-lane planner-lane-${lane}`}
-                  onDragOver={event => event.preventDefault()}
-                  onDrop={() => void handleDropToLane(lane)}
+                  className={`planner-lane planner-lane-${lane}${lane === 'today' ? ' planner-lane-today' : ''}`}
+                  onDragOver={isDroppable ? (event => event.preventDefault()) : undefined}
+                  onDrop={isDroppable ? (() => void handleDropToLane(lane)) : undefined}
                 >
                   <div className="planner-lane-header">
-                    <div>
-                      <span className="planner-lane-title">{WEEKDAY_LABELS[lane]}</span>
-                      {weekDateMap[lane] && <span className="planner-lane-date">{weekDateMap[lane]}</span>}
-                    </div>
-                    <div className="planner-lane-actions">
-                      <span className="planner-lane-count">{laneGroups[lane].length}</span>
-                      <button className="btn btn-utility" onClick={() => openCreateTask(selectedProjectId || undefined, null, lane)} aria-label={`Add task to ${WEEKDAY_LABELS[lane]}`}>+</button>
-                    </div>
+                    <span className="planner-lane-title">{LANE_LABELS[lane]}</span>
+                    <span className="planner-lane-count">{laneGroups[lane].length}</span>
                   </div>
 
                   <div className="planner-lane-body">
                     {laneGroups[lane].length === 0 && (
-                      <div className="planner-lane-empty">{loading ? 'Loading tasks…' : 'Drop work here'}</div>
+                      <div className="planner-lane-empty">
+                        {loading ? 'Loading…' : lane === 'overdue' ? 'No overdue tasks' : 'Drop work here'}
+                      </div>
                     )}
                     {laneGroups[lane].map(task => (
                       <article
                         key={task.id}
-                        className={`planner-task-card priority-${task.priority}`}
+                        className={`planner-task-card priority-${task.priority}${lane === 'later' ? ` bucket-${task.bucket}` : ''}`}
                         draggable
                         onDragStart={event => {
                           event.dataTransfer.setData('text/plain', task.id);
                           setDragTaskId(task.id);
                         }}
+                        onClick={() => setDrawerState({ type: 'task-edit', task })}
                       >
-                        <button className="planner-task-main" onClick={() => setDrawerState({ type: 'task-edit', task })}>
-                          <div className="planner-task-topline">
-                            <span className="planner-task-title">{task.title}</span>
-                            <span className="planner-task-priority">{task.priority}</span>
-                          </div>
-                          <div className="planner-task-meta">
-                            {task.project && <span className="tag tag-project">{task.project}</span>}
-                            {task.parent_milestone_id && (
-                              <span className="tag">Milestone linked</span>
-                            )}
-                            {task.due_date && <span className="tag tag-due">Due {task.due_date.slice(0, 10)}</span>}
-                          </div>
-                          {task.description && <p className="planner-task-desc">{task.description}</p>}
-                        </button>
-                        <div className="planner-task-footer">
-                          <button className="btn btn-xs btn-complete" onClick={() => void handleCompleteTask(task)}>Done</button>
-                          <button className="btn btn-xs btn-ghost" onClick={() => setDrawerState({ type: 'task-edit', task })}>Edit</button>
-                          <button className="btn btn-xs btn-ghost-danger" onClick={() => void handleDeleteTask(task)}>Delete</button>
+                        <span className="planner-task-title">{task.title}</span>
+                        <div className="planner-task-meta">
+                          {task.project && <span className="tag tag-project">{task.project}</span>}
+                          {task.due_date && <span className="tag tag-due">{task.due_date.slice(0, 10)}</span>}
+                          {lane === 'later' && (task.bucket === 'incoming' || task.bucket === 'backlog') && (
+                            <span className={`tag tag-bucket-${task.bucket}`}>{task.bucket}</span>
+                          )}
+                        </div>
+                        <div className="planner-task-actions">
+                          <Button variant="ghost" size="xs" className="text-green-500 hover:bg-green-500/10" onClick={e => { e.stopPropagation(); void handleCompleteTask(task); }}>Done</Button>
+                          <Button variant="ghost" size="xs" className="text-destructive hover:bg-destructive/10" onClick={e => { e.stopPropagation(); void handleDeleteTask(task); }}>Del</Button>
                         </div>
                       </article>
                     ))}
                   </div>
+
+                  <LaneQuickAdd
+                    defaultBucket={bucketForLane(lane)}
+                    defaultScheduledDate={scheduledDateForLane(lane)}
+                    defaultProjectId={selectedProjectId || undefined}
+                    onCreateTask={handleCreateTask}
+                  />
                 </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Right panel — workspace + editor */}
+        <RightPanel
+          state={drawerState}
+          projects={projectOptions}
+          milestonesByProject={milestonesByProject}
+          onClose={() => setDrawerState(null)}
+          onCreateTask={handleCreateTask}
+          onUpdateTask={handleUpdateTask}
+          onCreateProject={handleCreateProject}
+          onUpdateProject={handleUpdateProject}
+          onCreateMilestone={handleCreateMilestone}
+          onUpdateMilestone={handleUpdateMilestone}
+          selectedProject={selectedProject}
+          selectedProjectId={selectedProjectId}
+          activeProjects={activeProjects}
+          tasks={tasks}
+          onSelectProject={setSelectedProjectId}
+          onOpenCreateTask={openCreateTask}
+          onSetDrawerState={setDrawerState}
+          projectProgress={selectedProjectProgress}
+          projectCompletedMilestones={selectedProjectCompletedMilestones}
+          projectTotalMilestones={selectedProjectMilestones.length}
+          projectTaskCount={selectedProjectTaskCount}
+          projectNextMilestoneDate={selectedProjectNextMilestone ? formatDisplayDate(selectedProjectNextMilestone.due_date) : 'No due date'}
+          heroProjectCopy={heroProjectCopy}
+        />
+      </div>
     </div>
   );
 }
@@ -516,35 +382,38 @@ function formatDisplayDate(
   return new Intl.DateTimeFormat('en-US', options).format(new Date(`${value.slice(0, 10)}T00:00:00`));
 }
 
-function getPlannerLane(task: Task, weekStart: Date, weekDateMap: Record<string, string>): PlannerLane {
+function getPlannerLane(task: Task, weekStart: Date, weekEnd: Date): PlannerLane {
   const effectiveDate = (task.scheduled_date || task.due_date || '').slice(0, 10);
-  if (!effectiveDate) return 'later';
-
   const today = toISODate(new Date());
-  if (effectiveDate < today) return 'overdue';
 
-  for (const lane of WEEKDAY_LANES) {
-    if (weekDateMap[lane] === effectiveDate) return lane;
+  // Tasks with bucket today/in_progress and no future date → today lane
+  if (task.bucket === 'today' || task.bucket === 'in_progress') {
+    if (!effectiveDate || effectiveDate <= today) return 'today';
   }
 
-  if (effectiveDate < toISODate(weekStart)) return 'overdue';
+  if (!effectiveDate) return 'later';
+  if (effectiveDate < today) return 'overdue';
+  if (effectiveDate === today) return 'today';
+  if (effectiveDate <= toISODate(weekEnd)) return 'this_week';
   return 'later';
 }
 
-function bucketForLane(lane: PlannerLane, weekDateMap: Record<string, string>): TaskBucket {
-  if (lane === 'later') return 'backlog';
-  if (lane === 'overdue') return 'today';
-  const targetDate = weekDateMap[lane];
-  if (!targetDate) return 'this_week';
-  const today = toISODate(new Date());
-  if (targetDate <= today) return 'today';
-  return 'this_week';
+function bucketForLane(lane: PlannerLane): TaskBucket {
+  switch (lane) {
+    case 'overdue': return 'today'; // rescue: quick-add in overdue rescues to today
+    case 'today': return 'today';
+    case 'this_week': return 'this_week';
+    case 'later': return 'backlog';
+  }
 }
 
-function scheduledDateForLane(lane: PlannerLane, weekDateMap: Record<string, string>): string | null {
-  if (lane === 'later') return null;
-  if (lane === 'overdue') return toISODate(addDays(new Date(), -1));
-  return weekDateMap[lane] || null;
+function scheduledDateForLane(lane: PlannerLane): string | null {
+  switch (lane) {
+    case 'overdue': return toISODate(new Date()); // rescue to today
+    case 'today': return toISODate(new Date());
+    case 'this_week': return null;
+    case 'later': return null;
+  }
 }
 
 function priorityWeight(priority: TaskPriority): number {

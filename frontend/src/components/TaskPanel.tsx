@@ -1,5 +1,6 @@
 import type { Milestone, Task } from '../types';
 import { MILESTONE_STATUS_LABELS } from '../types';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   task: Task;
@@ -45,11 +46,12 @@ export function TaskPanelList({ tasks, milestoneId, onUnlink }: TaskPanelListPro
               {t.due_date && ` · Due ${t.due_date.slice(0, 10)}`}
             </span>
           </div>
-          <button
-            className="btn btn-xs"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onUnlink(milestoneId, t.id)}
             title="Unlink task"
-          >✕</button>
+          >✕</Button>
         </div>
       ))}
     </div>

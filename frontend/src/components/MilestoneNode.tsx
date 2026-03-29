@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Milestone, Task } from '../types';
 import { MILESTONE_STATUS_LABELS } from '../types';
 import { TaskPanelList } from './TaskPanel';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   milestone: Milestone;
@@ -39,7 +40,7 @@ export default function MilestoneNode({
   const hasChildren = children.length > 0 || linkedMilestones.length > 0 || tasks.length > 0;
 
   return (
-    <div className={`ms-node ${isCompleted ? 'ms-completed' : ''} ms-depth-${Math.min(depth, 3)}`}>
+    <div className={`ms-node ${isCompleted ? 'ms-completed' : ''} ms-depth-${Math.min(depth, 2)}`}>
       <div
         className={`ms-node-header ${milestone.is_major ? 'ms-node-major' : 'ms-node-minor'}`}
         onMouseEnter={() => setShowActions(true)}
@@ -71,14 +72,14 @@ export default function MilestoneNode({
           )}
         </div>
         <div className={`ms-node-actions ${showActions ? 'visible' : ''}`}>
-          <button className="btn btn-xs" onClick={() => onEdit(milestone)} title="Edit">✎</button>
+          <Button variant="ghost" size="xs" onClick={() => onEdit(milestone)} title="Edit">✎</Button>
           {!isCompleted && (
-            <button className="btn btn-xs btn-complete" onClick={() => onComplete(milestone.id)} title="Complete">✓</button>
+            <Button variant="ghost" size="xs" className="text-green-500 hover:bg-green-500/10" onClick={() => onComplete(milestone.id)} title="Complete">✓</Button>
           )}
-          <button className="btn btn-xs" onClick={() => onAddChild(milestone.id)} title="Add child milestone">+ Child</button>
-          <button className="btn btn-xs" onClick={() => onLinkTask(milestone.id)} title="Link task">+ Task</button>
-          <button className="btn btn-xs" onClick={() => onLinkMilestone(milestone.id)} title="Link milestone">🔗</button>
-          <button className="btn btn-xs btn-danger" onClick={() => onDelete(milestone.id)} title="Delete">✕</button>
+          <Button variant="ghost" size="xs" onClick={() => onAddChild(milestone.id)} title="Add child milestone">+ Child</Button>
+          <Button variant="ghost" size="xs" onClick={() => onLinkTask(milestone.id)} title="Link task">+ Task</Button>
+          <Button variant="ghost" size="xs" onClick={() => onLinkMilestone(milestone.id)} title="Link milestone">🔗</Button>
+          <Button variant="destructive" size="xs" onClick={() => onDelete(milestone.id)} title="Delete">✕</Button>
         </div>
       </div>
 

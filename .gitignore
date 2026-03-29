@@ -6,3 +6,4 @@ frontend/dist/
 .venv/
 .env
 *.csv_bak
+.vscode/mcp.json

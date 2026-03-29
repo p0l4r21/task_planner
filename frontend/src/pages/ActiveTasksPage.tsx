@@ -7,6 +7,7 @@ import BucketColumn from '../components/BucketColumn';
 import TaskTable from '../components/TaskTable';
 import TaskFilters from '../components/TaskFilters';
 import TaskForm from '../components/TaskForm';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 type ViewMode = 'kanban' | 'table';
 
@@ -56,15 +57,15 @@ export default function ActiveTasksPage() {
     <div className="page">
       <div className="page-header">
         <h2>Active Tasks</h2>
-        <div className="view-toggle">
-          <button className={`btn btn-sm ${view === 'kanban' ? 'btn-primary' : ''}`} onClick={() => setView('kanban')}>Board</button>
-          <button className={`btn btn-sm ${view === 'table' ? 'btn-primary' : ''}`} onClick={() => setView('table')}>Table</button>
-        </div>
+        <ToggleGroup type="single" value={view} onValueChange={v => { if (v) setView(v as ViewMode); }} variant="outline" size="sm">
+          <ToggleGroupItem value="kanban">Board</ToggleGroupItem>
+          <ToggleGroupItem value="table">Table</ToggleGroupItem>
+        </ToggleGroup>
       </div>
       <QuickAddBar onSubmit={async (data) => { await create(data); }} />
       <TaskFilters filters={filters} onChange={setFilters} projects={projects} />
       {view === 'kanban' ? (
-        <div className="kanban">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3 pb-4">
           {BUCKET_ORDER.map(b => (
             <BucketColumn
               key={b}

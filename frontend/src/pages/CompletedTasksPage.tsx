@@ -4,6 +4,8 @@ import type { Task } from '../types';
 import TaskTable from '../components/TaskTable';
 import TaskForm from '../components/TaskForm';
 import { api } from '../api';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function CompletedTasksPage() {
   const { tasks, restore, refresh } = useCompletedTasks();
@@ -31,17 +33,22 @@ export default function CompletedTasksPage() {
     <div className="page">
       <h2>Completed Tasks</h2>
       <div className="task-filters">
-        <div className="filter-controls">
-          <input
+        <div className="flex gap-2 flex-wrap">
+          <Input
             type="text"
             placeholder="Search completed…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <select value={project} onChange={e => setProject(e.target.value)} title="Filter by project">
-            <option value="">All Projects</option>
-            {projects.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
+          <Select value={project || 'all'} onValueChange={v => setProject(v === 'all' ? '' : v)}>
+            <SelectTrigger title="Filter by project">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <TaskTable

@@ -1,6 +1,9 @@
 import type { Task, TaskBucket, TaskPriority } from '../types';
 import { PRIORITY_LABELS, BUCKET_LABELS } from '../types';
 import { parseChecklist } from './TaskChecklist';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
 
 interface Props {
   task: Task;
@@ -24,7 +27,7 @@ export default function TaskCard({ task, onComplete, onMove, onEdit, onDelete }:
   const clTotal = clItems.length;
 
   return (
-    <div className="task-card" data-priority={task.priority}>
+    <Card className="task-card bg-transparent py-0 ring-foreground/[0.06] hover:ring-foreground/[0.12] transition-[box-shadow]" data-priority={task.priority}>
       <div className="task-card-header">
         <span
           className="priority-dot"
@@ -34,7 +37,7 @@ export default function TaskCard({ task, onComplete, onMove, onEdit, onDelete }:
         <span className="task-title" onClick={() => onEdit(task)}>{task.title}</span>
       </div>
       {task.description && <div className="task-desc">{task.description}</div>}
-      <div className="task-meta">
+      <div className="flex flex-wrap gap-1 mt-1.5">
         {task.project && <span className="tag tag-project">{task.project}</span>}
         {task.tags && task.tags.split(',').map(t => (
           <span key={t.trim()} className="tag">{t.trim()}</span>
@@ -44,20 +47,20 @@ export default function TaskCard({ task, onComplete, onMove, onEdit, onDelete }:
         {clTotal > 0 && <span className="tag tag-checklist">☑ {clDone}/{clTotal}</span>}
       </div>
       {task.blocked_reason && <div className="blocked-reason">⚠ {task.blocked_reason}</div>}
-      <div className="task-actions">
-        <button className="btn btn-xs btn-complete" onClick={() => onComplete(task.id)} title="Complete">✓</button>
-        <select
-          className="btn btn-xs"
-          value={task.bucket}
-          onChange={e => onMove(task.id, e.target.value as TaskBucket)}
-          title="Move to bucket"
-        >
-          {buckets.map(b => (
-            <option key={b} value={b}>{BUCKET_LABELS[b]}</option>
-          ))}
-        </select>
-        <button className="btn btn-xs btn-danger" onClick={() => onDelete(task.id)} title="Delete">✕</button>
+      <div className="flex flex-wrap gap-1 mt-2">
+        <Button variant="ghost" size="xs" className="text-green-500 hover:bg-green-500/10" onClick={() => onComplete(task.id)} title="Complete">✓</Button>
+        <Select value={task.bucket} onValueChange={v => onMove(task.id, v as TaskBucket)}>
+          <SelectTrigger className="h-6 w-auto gap-1 border-border px-2 text-xs" title="Move to bucket">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {buckets.map(b => (
+              <SelectItem key={b} value={b}>{BUCKET_LABELS[b]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="destructive" size="xs" onClick={() => onDelete(task.id)} title="Delete">✕</Button>
       </div>
-    </div>
+    </Card>
   );
 }

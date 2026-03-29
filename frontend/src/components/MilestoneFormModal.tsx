@@ -1,5 +1,11 @@
 import { useState } from 'react';
 import type { Milestone, MilestoneCreate, MilestoneUpdate, InlineMilestoneCreate } from '../types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface Props {
   milestone?: Milestone | null;
@@ -91,55 +97,59 @@ export default function MilestoneFormModal({ milestone, parentOptions, allMilest
   const showSubBuilder = !isEdit && isMajor && !forceMinor;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`modal-content${showSubBuilder ? ' modal-wide' : ''}`} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{isEdit ? 'Edit Milestone' : forceMinor ? 'New Sub-Milestone' : 'New Milestone'}</h3>
-          <button className="btn btn-sm" onClick={onClose}>✕</button>
-        </div>
+    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className={showSubBuilder ? 'sm:max-w-2xl' : 'sm:max-w-lg'}>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Edit Milestone' : forceMinor ? 'New Sub-Milestone' : 'New Milestone'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="task-form">
           <label>
             Title
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} required />
+            <Input type="text" value={title} onChange={e => setTitle(e.target.value)} required />
           </label>
           <label>
             Description
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} />
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} />
           </label>
           <div className="form-row">
             <label>
               Priority
-              <select value={priority} onChange={e => setPriority(e.target.value)}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
+              <Select value={priority} onValueChange={v => setPriority(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <label>
               Due Date
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </label>
           </div>
           {!forceMinor && (
-            <div className="form-row">
+            <div className="grid grid-cols-2 gap-3">
               <label className="checkbox-label">
                 <span>Major Milestone</span>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isMajor}
-                  onChange={e => handleMajorToggle(e.target.checked)}
+                  onCheckedChange={checked => handleMajorToggle(!!checked)}
                 />
               </label>
               {!isMajor && (
                 <label>
                   Parent Milestone
-                  <select value={parentId} onChange={e => setParentId(e.target.value)}>
-                    <option value="">— None —</option>
-                    {validParents.map(p => (
-                      <option key={p.id} value={p.id}>{p.title}</option>
-                    ))}
-                  </select>
+                  <Select value={parentId || 'none'} onValueChange={v => setParentId(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— None —</SelectItem>
+                      {validParents.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </label>
               )}
             </div>
@@ -150,7 +160,7 @@ export default function MilestoneFormModal({ milestone, parentOptions, allMilest
             <div className="milestone-builder">
               <div className="milestone-builder-header">
                 <h4>Sub-Milestones</h4>
-                <button type="button" className="btn btn-sm btn-primary" onClick={addSub}>+ Sub-milestone</button>
+                <Button variant="default" size="sm" type="button" onClick={addSub}>+ Sub-milestone</Button>
               </div>
               {subRows.length === 0 && (
                 <div className="milestone-builder-empty">No sub-milestones. You can add them now or later.</div>
@@ -158,40 +168,45 @@ export default function MilestoneFormModal({ milestone, parentOptions, allMilest
               {subRows.map(r => (
                 <div key={r.key} className="mb-child-row">
                   <span className="mb-type-badge minor">Minor</span>
-                  <input
+                  <Input
                     type="text"
                     placeholder="Sub-milestone title"
                     value={r.title}
                     onChange={e => updateSub(r.key, 'title', e.target.value)}
                     className="mb-title-input"
                   />
-                  <select value={r.priority} onChange={e => updateSub(r.key, 'priority', e.target.value)} className="mb-select" title="Priority">
-                    <option value="low">Low</option>
-                    <option value="medium">Med</option>
-                    <option value="high">High</option>
-                    <option value="critical">Crit</option>
-                  </select>
-                  <input
+                  <Select value={r.priority} onValueChange={v => updateSub(r.key, 'priority', v)}>
+                    <SelectTrigger className="mb-select" title="Priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Med</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Crit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
                     type="date"
                     value={r.due_date}
                     onChange={e => updateSub(r.key, 'due_date', e.target.value)}
                     className="mb-date-input"
                     title="Due date"
                   />
-                  <button type="button" className="btn btn-sm btn-danger" onClick={() => removeSub(r.key)}>✕</button>
+                  <Button variant="destructive" size="sm" type="button" onClick={() => removeSub(r.key)}>✕</Button>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="form-actions">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving || !title.trim()}>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
+            <Button variant="default" type="submit" disabled={saving || !title.trim()}>
               {saving ? 'Saving…' : isEdit ? 'Update' : 'Create'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

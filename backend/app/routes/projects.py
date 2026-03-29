@@ -81,7 +81,10 @@ def create_milestone(project_id: str, data: MilestoneCreate):
     p = project_service.get_project(project_id)
     if not p:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project_service.create_milestone(project_id, data)
+    try:
+        return project_service.create_milestone(project_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/milestones/{milestone_id}", response_model=Milestone)

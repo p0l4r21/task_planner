@@ -1,6 +1,7 @@
 import type { Task, TaskBucket } from '../types';
 import { BUCKET_LABELS } from '../types';
 import TaskCard from './TaskCard';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   bucket: TaskBucket;
@@ -13,12 +14,12 @@ interface Props {
 
 const BUCKET_COLORS: Record<TaskBucket, string> = {
   today: '#2563eb',
-  in_progress: '#7c3aed',
+  in_progress: '#52525b',
   blocked: '#dc2626',
   this_week: '#0891b2',
   incoming: '#ca8a04',
   backlog: '#6b7280',
-  completed: '#16a34a',
+  completed: '#3f3f46',
 };
 
 export default function BucketColumn({ bucket, tasks, onComplete, onMove, onEdit, onDelete }: Props) {
@@ -28,7 +29,7 @@ export default function BucketColumn({ bucket, tasks, onComplete, onMove, onEdit
         <span className="bucket-label">{BUCKET_LABELS[bucket]}</span>
         <span className="bucket-count">{tasks.length}</span>
       </div>
-      <div className="bucket-body">
+      <ScrollArea className="bucket-body">
         {tasks.length === 0 && <div className="bucket-empty">No tasks</div>}
         {tasks.map(t => (
           <TaskCard
@@ -40,7 +41,7 @@ export default function BucketColumn({ bucket, tasks, onComplete, onMove, onEdit
             onDelete={onDelete}
           />
         ))}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

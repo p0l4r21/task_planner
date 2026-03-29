@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { TaskPriority, TaskBucket } from '../types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Filters {
   search: string;
@@ -30,52 +33,77 @@ export default function TaskFilters({ filters, onChange, projects }: Props) {
 
   return (
     <div className="task-filters">
-      <form onSubmit={handleSearch} className="filter-search">
-        <input
+      <form onSubmit={handleSearch} className="flex gap-2 mb-2 flex-wrap">
+        <Input
           type="text"
           placeholder="Search tasks…"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <button type="submit" className="btn btn-sm">Search</button>
+        <Button variant="ghost" size="sm" type="submit">Search</Button>
         {filters.search && (
-          <button type="button" className="btn btn-sm" onClick={() => { setSearch(''); set('search', ''); }}>
+          <Button variant="ghost" size="sm" type="button" onClick={() => { setSearch(''); set('search', ''); }}>
             Clear
-          </button>
+          </Button>
         )}
       </form>
-      <div className="filter-controls">
-        <select value={filters.priority} onChange={e => set('priority', e.target.value)} title="Filter by priority">
-          <option value="">All Priorities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <select value={filters.bucket} onChange={e => set('bucket', e.target.value)} title="Filter by bucket">
-          <option value="">All Buckets</option>
-          <option value="today">Today</option>
-          <option value="in_progress">In Progress</option>
-          <option value="blocked">Blocked</option>
-          <option value="this_week">This Week</option>
-          <option value="incoming">Incoming</option>
-          <option value="backlog">Backlog</option>
-        </select>
-        <select value={filters.project} onChange={e => set('project', e.target.value)} title="Filter by project">
-          <option value="">All Projects</option>
-          {projects.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <select value={filters.sort_by} onChange={e => set('sort_by', e.target.value)} title="Sort by">
-          <option value="">Default Sort</option>
-          <option value="priority">Priority</option>
-          <option value="due_date">Due Date</option>
-          <option value="scheduled_date">Scheduled Date</option>
-          <option value="created_at">Created</option>
-        </select>
-        <select value={filters.sort_dir} onChange={e => set('sort_dir', e.target.value)} title="Sort direction">
-          <option value="asc">Asc</option>
-          <option value="desc">Desc</option>
-        </select>
+      <div className="flex gap-2 flex-wrap">
+        <Select value={filters.priority || 'all'} onValueChange={v => set('priority', v === 'all' ? '' : v)}>
+          <SelectTrigger title="Filter by priority">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priorities</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filters.bucket || 'all'} onValueChange={v => set('bucket', v === 'all' ? '' : v)}>
+          <SelectTrigger title="Filter by bucket">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Buckets</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="blocked">Blocked</SelectItem>
+            <SelectItem value="this_week">This Week</SelectItem>
+            <SelectItem value="incoming">Incoming</SelectItem>
+            <SelectItem value="backlog">Backlog</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filters.project || 'all'} onValueChange={v => set('project', v === 'all' ? '' : v)}>
+          <SelectTrigger title="Filter by project">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filters.sort_by || 'all'} onValueChange={v => set('sort_by', v === 'all' ? '' : v)}>
+          <SelectTrigger title="Sort by">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Default Sort</SelectItem>
+            <SelectItem value="priority">Priority</SelectItem>
+            <SelectItem value="due_date">Due Date</SelectItem>
+            <SelectItem value="scheduled_date">Scheduled Date</SelectItem>
+            <SelectItem value="created_at">Created</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filters.sort_dir} onValueChange={v => set('sort_dir', v)}>
+          <SelectTrigger title="Sort direction">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="asc">Asc</SelectItem>
+            <SelectItem value="desc">Desc</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

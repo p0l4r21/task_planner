@@ -201,6 +201,11 @@ def create_milestone(project_id: str, data: MilestoneCreate) -> Milestone:
     parent_id = data.parent_milestone_id
     if parent_id:
         is_major = False
+        # Enforce max 2-level hierarchy: parent must be a major milestone
+        with SessionLocal() as db:
+            parent_row = db.query(MilestoneRow).filter(MilestoneRow.id == parent_id).first()
+            if parent_row and not parent_row.is_major:
+                raise ValueError("Sub-milestones can only be nested under major milestones")
     if is_major:
         parent_id = None
 

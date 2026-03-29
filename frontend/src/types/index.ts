@@ -110,7 +110,7 @@ export const BUCKET_ORDER: TaskBucket[] = [
 
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed';
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'critical';
-export type MilestoneStatus = 'pending' | 'in_progress' | 'completed';
+export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'archived';
 
 export interface Project {
   id: string;
@@ -242,6 +242,7 @@ export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
   pending: 'Pending',
   in_progress: 'In Progress',
   completed: 'Completed',
+  archived: 'Archived',
 };
 
 // ===================================================================

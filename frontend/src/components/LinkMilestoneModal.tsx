@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import type { Milestone } from '../types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   milestones: Milestone[];
@@ -38,21 +42,19 @@ export default function LinkMilestoneModal({ milestones, currentMilestoneId, onL
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-sm" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Link Milestone</h3>
-          <button className="btn btn-sm" onClick={onClose}>✕</button>
-        </div>
-        <input
+    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Link Milestone</DialogTitle>
+        </DialogHeader>
+        <Input
           type="text"
-          className="quick-add-input"
           placeholder="Search milestones…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           autoFocus
         />
-        <div className="link-list">
+        <ScrollArea className="link-list">
           {available.length === 0 && (
             <div className="link-list-empty">No milestones available to link</div>
           )}
@@ -64,17 +66,18 @@ export default function LinkMilestoneModal({ milestones, currentMilestoneId, onL
                 </span>
                 <span className="link-list-title">{m.title}</span>
               </div>
-              <button
-                className="btn btn-xs btn-primary"
+              <Button
+                variant="default"
+                size="xs"
                 onClick={() => handleLink(m.id)}
                 disabled={linking === m.id}
               >
                 {linking === m.id ? '…' : 'Link'}
-              </button>
+              </Button>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }

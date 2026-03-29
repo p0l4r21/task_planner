@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import type { Task, TaskUpdate, TaskBucket, TaskPriority, ChecklistItem } from '../types';
 import TaskChecklist, { parseChecklist, serializeChecklist } from './TaskChecklist';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface Props {
   task: Task;
@@ -40,85 +45,90 @@ export default function TaskForm({ task, onSave, onClose }: Props) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Edit Task</h3>
-          <button className="btn btn-sm" onClick={onClose}>✕</button>
-        </div>
+    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Task</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="task-form">
           <label>
             Title
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} required />
+            <Input type="text" value={title} onChange={e => setTitle(e.target.value)} required />
           </label>
           <label>
             Description
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} />
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} />
           </label>
-          <div className="form-row">
+          <div className="grid grid-cols-2 gap-3">
             <label>
               Priority
-              <select value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
+              <Select value={priority} onValueChange={v => setPriority(v as TaskPriority)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <label>
               Bucket
-              <select value={bucket} onChange={e => setBucket(e.target.value as TaskBucket)}>
-                <option value="incoming">Incoming</option>
-                <option value="today">Today</option>
-                <option value="this_week">This Week</option>
-                <option value="in_progress">In Progress</option>
-                <option value="blocked">Blocked</option>
-                <option value="backlog">Backlog</option>
-              </select>
+              <Select value={bucket} onValueChange={v => setBucket(v as TaskBucket)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="incoming">Incoming</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="this_week">This Week</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
           </div>
-          <div className="form-row">
+          <div className="grid grid-cols-2 gap-3">
             <label>
               Due Date
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </label>
             <label>
               Scheduled Date
-              <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} />
+              <Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} />
             </label>
           </div>
-          <div className="form-row">
+          <div className="grid grid-cols-2 gap-3">
             <label>
               Project
-              <input type="text" value={project} onChange={e => setProject(e.target.value)} />
+              <Input type="text" value={project} onChange={e => setProject(e.target.value)} />
             </label>
             <label>
               Tags
-              <input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder="comma separated" />
+              <Input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder="comma separated" />
             </label>
           </div>
           {bucket === 'blocked' && (
             <label>
               Blocked Reason
-              <input type="text" value={blockedReason} onChange={e => setBlockedReason(e.target.value)} />
+              <Input type="text" value={blockedReason} onChange={e => setBlockedReason(e.target.value)} />
             </label>
           )}
           <label>
             Notes
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
           </label>
           <div className="form-section">
             <label>Checklist</label>
             <TaskChecklist items={checklist} onChange={setChecklist} />
           </div>
-          <div className="form-actions">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving || !title.trim()}>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
+            <Button variant="default" type="submit" disabled={saving || !title.trim()}>
               {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

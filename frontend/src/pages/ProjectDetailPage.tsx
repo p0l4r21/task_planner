@@ -8,6 +8,9 @@ import MilestoneTree from '../components/MilestoneTree';
 import MilestoneFormModal from '../components/MilestoneFormModal';
 import LinkMilestoneModal from '../components/LinkMilestoneModal';
 import LinkTaskModal from '../components/LinkTaskModal';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/components/ui/breadcrumb';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -105,11 +108,19 @@ export default function ProjectDetailPage() {
   return (
     <div className="page">
       {/* Breadcrumb */}
-      <div className="breadcrumb">
-        <Link to="/projects">Projects</Link>
-        <span className="breadcrumb-sep">›</span>
-        <span>{project.name}</span>
-      </div>
+      <Breadcrumb className="mb-3">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/projects">Projects</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{project.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* Project Header */}
       <div className="project-detail-header">
@@ -139,12 +150,7 @@ export default function ProjectDetailPage() {
             </span>
             <span className="progress-percent">{progress.percent}%</span>
           </div>
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${progress.percent}%` }}
-            />
-          </div>
+          <Progress value={progress.percent} className="h-2" />
         </div>
       )}
 
@@ -152,13 +158,13 @@ export default function ProjectDetailPage() {
       <div className="ms-section">
         <div className="ms-section-header">
           <h3>Milestones</h3>
-          <button className="btn btn-primary btn-sm" onClick={() => {
+          <Button variant="default" size="sm" onClick={() => {
             setEditingMs(null);
             setParentIdForNew(null);
             setShowMsForm(true);
           }}>
             + New Milestone
-          </button>
+          </Button>
         </div>
 
         <MilestoneTree

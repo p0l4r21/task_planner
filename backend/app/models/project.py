@@ -30,6 +30,7 @@ class MilestoneStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+    ARCHIVED = "archived"
 
 
 # ---------------------------------------------------------------------------

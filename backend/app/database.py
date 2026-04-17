@@ -34,7 +34,9 @@ def init_db():
 
     inspector = inspect(engine)
     task_columns = {column["name"] for column in inspector.get_columns("tasks")}
+    project_columns = {column["name"] for column in inspector.get_columns("projects")}
     idea_columns = {column["name"] for column in inspector.get_columns("ideas")}
+    idea_entry_columns = {column["name"] for column in inspector.get_columns("idea_entries")}
     alter_statements = []
     post_alter_statements = []
 
@@ -44,6 +46,8 @@ def init_db():
         alter_statements.append("ALTER TABLE tasks ADD COLUMN parent_milestone_id VARCHAR")
     if "hierarchy_level" not in task_columns:
         alter_statements.append("ALTER TABLE tasks ADD COLUMN hierarchy_level INTEGER DEFAULT 0")
+    if "source_idea_id" not in project_columns:
+        alter_statements.append("ALTER TABLE projects ADD COLUMN source_idea_id VARCHAR")
     if "summary" not in idea_columns:
         alter_statements.append("ALTER TABLE ideas ADD COLUMN summary TEXT DEFAULT ''")
         post_alter_statements.append("UPDATE ideas SET summary = COALESCE(NULLIF(description, ''), '') WHERE summary IS NULL OR summary = ''")
@@ -53,6 +57,14 @@ def init_db():
         alter_statements.append("ALTER TABLE ideas ADD COLUMN proposed_change TEXT DEFAULT ''")
     if "why_it_matters" not in idea_columns:
         alter_statements.append("ALTER TABLE ideas ADD COLUMN why_it_matters TEXT DEFAULT ''")
+    if "body" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN body TEXT DEFAULT ''")
+    if "notes" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN notes TEXT DEFAULT ''")
+    if "parent_idea_id" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN parent_idea_id VARCHAR")
+    if "type" not in idea_entry_columns:
+        alter_statements.append("ALTER TABLE idea_entries ADD COLUMN type VARCHAR DEFAULT 'note'")
 
     if alter_statements:
         with engine.begin() as conn:
@@ -62,3 +74,6 @@ def init_db():
                 conn.execute(text(statement))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_project_id ON tasks (project_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_parent_milestone_id ON tasks (parent_milestone_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_projects_source_idea_id ON projects (source_idea_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_idea_entries_idea_id ON idea_entries (idea_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ideas_parent_idea_id ON ideas (parent_idea_id)"))

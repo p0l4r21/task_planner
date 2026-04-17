@@ -37,6 +37,7 @@ def _row_to_project(row: ProjectRow) -> Project:
         target_end_date=row.target_end_date,
         owner=row.owner or "local_user",
         tags=row.tags or "",
+        source_idea_id=row.source_idea_id,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -51,6 +52,7 @@ def _apply_project_to_row(row: ProjectRow, p: Project) -> None:
     row.target_end_date = p.target_end_date
     row.owner = p.owner
     row.tags = p.tags
+    row.source_idea_id = p.source_idea_id
     row.created_at = p.created_at
     row.updated_at = p.updated_at
 
@@ -470,6 +472,7 @@ def create_project_with_milestones(data: ProjectCreateWithMilestones) -> dict:
         target_end_date=data.target_end_date,
         owner=data.owner,
         tags=data.tags,
+        source_idea_id=data.source_idea_id,
     ))
 
     created: List[Milestone] = []

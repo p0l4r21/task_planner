@@ -43,6 +43,7 @@ class ProjectRow(Base):
     target_end_date = Column(String, nullable=True)
     owner = Column(String, default="local_user")
     tags = Column(String, default="")
+    source_idea_id = Column(String, nullable=True, index=True)
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
 
@@ -57,6 +58,7 @@ class IdeaRow(Base):
     current_state = Column(Text, default="")
     proposed_change = Column(Text, default="")
     why_it_matters = Column(Text, default="")
+    body = Column(Text, default="")
     status = Column(String, default="captured", index=True)
     tags = Column(String, default="")
     notes = Column(Text, default="")
@@ -66,8 +68,21 @@ class IdeaRow(Base):
     linked_task_ids = Column(String, default="")
     linked_milestone_ids = Column(String, default="")
     linked_idea_ids = Column(String, default="")
+    parent_idea_id = Column(String, nullable=True, index=True)
     links_json = Column(Text, default="")
     converted_project_id = Column(String, nullable=True)
+
+
+class IdeaEntryRow(Base):
+    __tablename__ = "idea_entries"
+
+    id = Column(String, primary_key=True)
+    idea_id = Column(String, nullable=False, index=True)
+    title = Column(String, default="")
+    content = Column(Text, default="")
+    type = Column(String, default="note")
+    created_at = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
 
 
 class MilestoneRow(Base):

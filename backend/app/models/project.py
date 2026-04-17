@@ -47,6 +47,7 @@ class Project(BaseModel):
     target_end_date: Optional[str] = None
     owner: str = "local_user"
     tags: str = ""
+    source_idea_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -60,6 +61,7 @@ class ProjectCreate(BaseModel):
     target_end_date: Optional[str] = None
     owner: str = "local_user"
     tags: str = ""
+    source_idea_id: Optional[str] = None
 
 
 class ProjectUpdate(BaseModel):
@@ -71,6 +73,7 @@ class ProjectUpdate(BaseModel):
     target_end_date: Optional[str] = None
     owner: Optional[str] = None
     tags: Optional[str] = None
+    source_idea_id: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +144,7 @@ class ProjectCreateWithMilestones(BaseModel):
     target_end_date: Optional[str] = None
     owner: str = "local_user"
     tags: str = ""
+    source_idea_id: Optional[str] = None
     milestones: List[InlineMilestoneCreate] = []
 
 

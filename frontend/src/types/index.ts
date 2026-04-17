@@ -122,6 +122,7 @@ export interface Project {
   target_end_date: string | null;
   owner: string;
   tags: string;
+  source_idea_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +136,7 @@ export interface ProjectCreate {
   target_end_date?: string | null;
   owner?: string;
   tags?: string;
+  source_idea_id?: string | null;
 }
 
 export interface ProjectUpdate {
@@ -146,6 +148,7 @@ export interface ProjectUpdate {
   target_end_date?: string | null;
   owner?: string;
   tags?: string;
+  source_idea_id?: string | null;
 }
 
 export interface Milestone {
@@ -209,6 +212,7 @@ export interface ProjectCreateWithMilestones {
   target_end_date?: string | null;
   owner?: string;
   tags?: string;
+  source_idea_id?: string | null;
   milestones?: InlineMilestoneCreate[];
 }
 
@@ -319,6 +323,7 @@ export interface ProjectsSummary {
 // ===================================================================
 
 export type IdeaStatus = 'captured' | 'exploring' | 'validated' | 'converted' | 'archived';
+export type IdeaEntryType = 'note' | 'meeting' | 'research' | 'decision';
 
 export type IdeaLinkType =
   | 'inspired_by'
@@ -341,6 +346,7 @@ export interface Idea {
   current_state: string;
   proposed_change: string;
   why_it_matters: string;
+  body: string;
   status: IdeaStatus;
   tags: string;
   notes: string;
@@ -350,6 +356,7 @@ export interface Idea {
   linked_task_ids: string;
   linked_milestone_ids: string;
   linked_idea_ids: string;
+  parent_idea_id: string | null;
   links_json: string;
   converted_project_id: string | null;
   description: string; // Legacy compatibility source for summary.
@@ -361,6 +368,7 @@ export interface IdeaCreate {
   current_state?: string;
   proposed_change?: string;
   why_it_matters?: string;
+  body?: string;
   status?: IdeaStatus;
   tags?: string;
   notes?: string;
@@ -368,6 +376,7 @@ export interface IdeaCreate {
   linked_task_ids?: string;
   linked_milestone_ids?: string;
   linked_idea_ids?: string;
+  parent_idea_id?: string | null;
   links_json?: string;
   description?: string; // Legacy compatibility source for summary.
 }
@@ -378,6 +387,7 @@ export interface IdeaUpdate {
   current_state?: string;
   proposed_change?: string;
   why_it_matters?: string;
+  body?: string;
   status?: IdeaStatus;
   tags?: string;
   notes?: string;
@@ -385,9 +395,32 @@ export interface IdeaUpdate {
   linked_task_ids?: string;
   linked_milestone_ids?: string;
   linked_idea_ids?: string;
+  parent_idea_id?: string | null;
   links_json?: string;
   converted_project_id?: string | null;
   description?: string; // Legacy compatibility source for summary.
+}
+
+export interface IdeaEntry {
+  id: string;
+  idea_id: string;
+  title: string;
+  content: string;
+  type: IdeaEntryType;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IdeaEntryCreate {
+  title?: string;
+  content: string;
+  type?: IdeaEntryType;
+}
+
+export interface IdeaEntryUpdate {
+  title?: string;
+  content?: string;
+  type?: IdeaEntryType;
 }
 
 export const IDEA_STATUS_LABELS: Record<IdeaStatus, string> = {
@@ -404,6 +437,20 @@ export const IDEA_STATUS_ORDER: IdeaStatus[] = [
   'validated',
   'converted',
   'archived',
+];
+
+export const IDEA_ENTRY_TYPE_LABELS: Record<IdeaEntryType, string> = {
+  note: 'Note',
+  meeting: 'Meeting',
+  research: 'Research',
+  decision: 'Decision',
+};
+
+export const IDEA_ENTRY_TYPE_ORDER: IdeaEntryType[] = [
+  'note',
+  'meeting',
+  'research',
+  'decision',
 ];
 
 export const IDEA_LINK_TYPE_LABELS: Record<IdeaLinkType, string> = {

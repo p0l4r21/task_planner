@@ -2,8 +2,72 @@
  * Prompt templates for AI-powered planner features.
  */
 
-import type { Idea, Project, Task } from '../../types';
+import type { Idea, IdeaEntry, Project, Task } from '../../types';
 import { getIdeaSummary } from '../ideaFields';
+
+export type IdeaWorkspaceAction =
+  | 'expand'
+  | 'gaps'
+  | 'tasks'
+  | 'risks'
+  | 'executive_summary'
+  | 'child_ideas'
+  | 'project_outline';
+
+const IDEA_ACTION_INSTRUCTIONS: Record<IdeaWorkspaceAction, string> = {
+  expand: 'Expand this idea into a more complete, practical concept. Include useful angles, assumptions, and next questions.',
+  gaps: 'Identify gaps, weak points, missing evidence, unclear assumptions, and decisions that need to be made.',
+  tasks: 'Extract candidate implementation tasks. Return a concise grouped list. Do not invent excessive tasks.',
+  risks: 'Identify the main risks and mitigations for pursuing this idea.',
+  executive_summary: 'Write an executive summary suitable for a stakeholder. Keep it crisp and decision-oriented.',
+  child_ideas: 'Suggest 5-8 child ideas or branches that could be split out from this idea. Include one sentence of rationale for each.',
+  project_outline: 'Generate a project outline with objective, scope, non-goals, likely milestones, and first steps.',
+};
+
+function truncate(value: string, maxLength: number): string {
+  const trimmed = value?.trim() || '';
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength).trim()}...`;
+}
+
+export function ideaWorkspaceActionPrompt(
+  idea: Idea,
+  entries: IdeaEntry[],
+  relatedIdeas: Idea[],
+  action: IdeaWorkspaceAction,
+): string {
+  const entrySummary = entries.slice(0, 8).map(entry => (
+    `- ${entry.title || entry.type} (${entry.type}, ${entry.created_at}): ${truncate(entry.content, 700)}`
+  )).join('\n');
+  const relatedSummary = relatedIdeas.slice(0, 10).map(related => (
+    `- ${related.title}: ${truncate(getIdeaSummary(related), 250)}`
+  )).join('\n');
+
+  return `Use the current stored idea workspace content below. ${IDEA_ACTION_INSTRUCTIONS[action]}
+
+Keep the output directly usable in a planning workspace. Prefer clear headings and bullets. Do not mention that you are an AI.
+
+Idea:
+Title: ${idea.title}
+Status: ${idea.status}
+Summary: ${getIdeaSummary(idea)}
+Current state: ${idea.current_state}
+Proposed change: ${idea.proposed_change}
+Why it matters: ${idea.why_it_matters}
+Tags: ${idea.tags}
+
+Body:
+${truncate(idea.body, 5000)}
+
+Notes:
+${truncate(idea.notes, 1800)}
+
+Recent entries:
+${entrySummary || 'None'}
+
+Related ideas:
+${relatedSummary || 'None'}`;
+}
 
 export function summarizeIdeaPrompt(idea: Idea): string {
   return `Summarize the following idea in 2-3 concise sentences suitable for a planning tool:\n\nTitle: ${idea.title}\nSummary: ${getIdeaSummary(idea)}\nCurrent state: ${idea.current_state}\nProposed change: ${idea.proposed_change}\nWhy it matters: ${idea.why_it_matters}\nNotes: ${idea.notes}`;

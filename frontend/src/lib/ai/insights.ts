@@ -3,9 +3,10 @@
  * Uses the provider abstraction so the UI doesn't deal with raw prompts.
  */
 
-import type { Idea, Milestone, Project, Task } from '../../types';
+import type { Idea, IdeaEntry, Milestone, Project, Task } from '../../types';
 import { getAIProvider } from './provider';
 import {
+  ideaWorkspaceActionPrompt,
   summarizeIdeaPrompt,
   suggestTagsPrompt,
   suggestRelatedPrompt,
@@ -16,6 +17,7 @@ import {
   draftStatusUpdatePrompt,
   plannerInsightsPrompt,
 } from './prompts';
+import type { IdeaWorkspaceAction } from './prompts';
 
 const SYSTEM_MSG = {
   role: 'system' as const,
@@ -47,6 +49,15 @@ export async function suggestRelated(
 
 export async function draftProjectScope(idea: Idea): Promise<string> {
   return ask(draftProjectScopePrompt(idea));
+}
+
+export async function runIdeaWorkspaceAction(
+  idea: Idea,
+  entries: IdeaEntry[],
+  relatedIdeas: Idea[],
+  action: IdeaWorkspaceAction,
+): Promise<string> {
+  return ask(ideaWorkspaceActionPrompt(idea, entries, relatedIdeas, action));
 }
 
 // ===================================================================

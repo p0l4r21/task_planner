@@ -4,6 +4,7 @@ import type {
   Milestone, MilestoneCreate, MilestoneUpdate, InlineMilestoneCreate,
   ProjectProgress, CalendarMilestone, ProjectsSummary,
   Idea, IdeaCreate, IdeaUpdate,
+  IdeaEntry, IdeaEntryCreate, IdeaEntryUpdate,
 } from '../types';
 
 const BASE = '/api/tasks';
@@ -206,5 +207,21 @@ export const api = {
     return request<Idea>(`${IDEAS}/${id}/convert`, {
       method: 'POST', body: JSON.stringify({ project_id: projectId }),
     });
+  },
+
+  listIdeaEntries(ideaId: string): Promise<IdeaEntry[]> {
+    return request<IdeaEntry[]>(`${IDEAS}/${ideaId}/entries`);
+  },
+
+  createIdeaEntry(ideaId: string, data: IdeaEntryCreate): Promise<IdeaEntry> {
+    return request<IdeaEntry>(`${IDEAS}/${ideaId}/entries`, { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  updateIdeaEntry(ideaId: string, entryId: string, data: IdeaEntryUpdate): Promise<IdeaEntry> {
+    return request<IdeaEntry>(`${IDEAS}/${ideaId}/entries/${entryId}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  deleteIdeaEntry(ideaId: string, entryId: string): Promise<void> {
+    return request<void>(`${IDEAS}/${ideaId}/entries/${entryId}`, { method: 'DELETE' });
   },
 };

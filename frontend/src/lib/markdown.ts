@@ -46,6 +46,13 @@ export function ideaToMarkdown(idea: Idea): string {
     lines.push('');
   }
 
+  if (idea.body) {
+    lines.push('## Body');
+    lines.push('');
+    lines.push(idea.body);
+    lines.push('');
+  }
+
   if (idea.notes) {
     lines.push('## Notes');
     lines.push('');

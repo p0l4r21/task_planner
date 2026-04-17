@@ -38,6 +38,7 @@ class Idea(BaseModel):
     current_state: str = ""
     proposed_change: str = ""
     why_it_matters: str = ""
+    body: str = ""
     status: IdeaStatus = IdeaStatus.CAPTURED
     tags: str = ""  # comma-separated
     notes: str = ""
@@ -47,6 +48,7 @@ class Idea(BaseModel):
     linked_task_ids: str = ""  # comma-separated
     linked_milestone_ids: str = ""  # comma-separated
     linked_idea_ids: str = ""  # comma-separated
+    parent_idea_id: Optional[str] = None
     links_json: str = ""  # JSON array of IdeaLink for typed links
     converted_project_id: Optional[str] = None
     description: str = ""  # Legacy compatibility source for summary.
@@ -58,6 +60,7 @@ class IdeaCreate(BaseModel):
     current_state: str = ""
     proposed_change: str = ""
     why_it_matters: str = ""
+    body: str = ""
     status: IdeaStatus = IdeaStatus.CAPTURED
     tags: str = ""
     notes: str = ""
@@ -65,6 +68,7 @@ class IdeaCreate(BaseModel):
     linked_task_ids: str = ""
     linked_milestone_ids: str = ""
     linked_idea_ids: str = ""
+    parent_idea_id: Optional[str] = None
     links_json: str = ""
     description: str = ""  # Legacy compatibility source for summary.
 
@@ -75,6 +79,7 @@ class IdeaUpdate(BaseModel):
     current_state: Optional[str] = None
     proposed_change: Optional[str] = None
     why_it_matters: Optional[str] = None
+    body: Optional[str] = None
     status: Optional[IdeaStatus] = None
     tags: Optional[str] = None
     notes: Optional[str] = None
@@ -82,6 +87,29 @@ class IdeaUpdate(BaseModel):
     linked_task_ids: Optional[str] = None
     linked_milestone_ids: Optional[str] = None
     linked_idea_ids: Optional[str] = None
+    parent_idea_id: Optional[str] = None
     links_json: Optional[str] = None
     converted_project_id: Optional[str] = None
     description: Optional[str] = None  # Legacy compatibility source for summary.
+
+
+class IdeaEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    idea_id: str
+    title: str = ""
+    content: str
+    type: str = "note"
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class IdeaEntryCreate(BaseModel):
+    title: str = ""
+    content: str
+    type: str = "note"
+
+
+class IdeaEntryUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    type: Optional[str] = None

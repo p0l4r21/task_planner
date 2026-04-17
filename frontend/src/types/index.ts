@@ -271,6 +271,30 @@ export interface ProjectSummaryItem {
   target_end_date: string | null;
 }
 
+// ===================================================================
+// Computed project health & insights (client-side only)
+// ===================================================================
+
+export type ProjectHealth = 'on_track' | 'at_risk' | 'off_track' | 'unknown';
+
+export const PROJECT_HEALTH_LABELS: Record<ProjectHealth, string> = {
+  on_track: 'On Track',
+  at_risk: 'At Risk',
+  off_track: 'Off Track',
+  unknown: 'Unknown',
+};
+
+export interface ProjectWithHealth extends Project {
+  health: ProjectHealth;
+  taskCount: number;
+  completedTaskCount: number;
+  milestoneCount: number;
+  completedMilestoneCount: number;
+  overdueMilestoneCount: number;
+  progressPercent: number;
+  nextMilestoneDue: string | null;
+}
+
 export interface UpcomingMilestone {
   id: string;
   title: string;
@@ -289,3 +313,104 @@ export interface ProjectsSummary {
   upcoming_milestones: UpcomingMilestone[];
   projects: ProjectSummaryItem[];
 }
+
+// ===================================================================
+// Idea Hub Types
+// ===================================================================
+
+export type IdeaStatus = 'captured' | 'exploring' | 'validated' | 'converted' | 'archived';
+
+export type IdeaLinkType =
+  | 'inspired_by'
+  | 'similar_to'
+  | 'depends_on'
+  | 'expands'
+  | 'reuses'
+  | 'learned_from';
+
+export interface IdeaLink {
+  target_type: 'project' | 'task' | 'milestone' | 'idea';
+  target_id: string;
+  link_type: IdeaLinkType;
+}
+
+export interface Idea {
+  id: string;
+  title: string;
+  summary: string;
+  current_state: string;
+  proposed_change: string;
+  why_it_matters: string;
+  status: IdeaStatus;
+  tags: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  linked_project_ids: string;
+  linked_task_ids: string;
+  linked_milestone_ids: string;
+  linked_idea_ids: string;
+  links_json: string;
+  converted_project_id: string | null;
+  description: string; // Legacy compatibility source for summary.
+}
+
+export interface IdeaCreate {
+  title: string;
+  summary?: string;
+  current_state?: string;
+  proposed_change?: string;
+  why_it_matters?: string;
+  status?: IdeaStatus;
+  tags?: string;
+  notes?: string;
+  linked_project_ids?: string;
+  linked_task_ids?: string;
+  linked_milestone_ids?: string;
+  linked_idea_ids?: string;
+  links_json?: string;
+  description?: string; // Legacy compatibility source for summary.
+}
+
+export interface IdeaUpdate {
+  title?: string;
+  summary?: string;
+  current_state?: string;
+  proposed_change?: string;
+  why_it_matters?: string;
+  status?: IdeaStatus;
+  tags?: string;
+  notes?: string;
+  linked_project_ids?: string;
+  linked_task_ids?: string;
+  linked_milestone_ids?: string;
+  linked_idea_ids?: string;
+  links_json?: string;
+  converted_project_id?: string | null;
+  description?: string; // Legacy compatibility source for summary.
+}
+
+export const IDEA_STATUS_LABELS: Record<IdeaStatus, string> = {
+  captured: 'Captured',
+  exploring: 'Exploring',
+  validated: 'Validated',
+  converted: 'Converted',
+  archived: 'Archived',
+};
+
+export const IDEA_STATUS_ORDER: IdeaStatus[] = [
+  'captured',
+  'exploring',
+  'validated',
+  'converted',
+  'archived',
+];
+
+export const IDEA_LINK_TYPE_LABELS: Record<IdeaLinkType, string> = {
+  inspired_by: 'Inspired by',
+  similar_to: 'Similar to',
+  depends_on: 'Depends on',
+  expands: 'Expands',
+  reuses: 'Reuses',
+  learned_from: 'Learned from',
+};

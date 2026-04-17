@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 
 export type PlannerLane = 'overdue' | 'today' | 'this_week' | 'later';
@@ -9,6 +10,7 @@ interface Props {
   onCreate: () => void;
   filterSearch: string;
   onFilterChange: (patch: { search?: string; priority?: string; projectId?: string }) => void;
+  workspaceTabs?: ReactNode;
 }
 
 export default function WeekBar({
@@ -18,10 +20,12 @@ export default function WeekBar({
   onCreate,
   filterSearch,
   onFilterChange,
+  workspaceTabs,
 }: Props) {
   return (
     <header className="week-bar">
       <div className="week-bar-board">
+        {workspaceTabs}
         <div className="week-bar-nav">
           <button className="week-bar-chevron" onClick={() => onChangeWeek(weekOffset - 1)} aria-label="Previous week">‹</button>
           <span className="week-bar-range">{weekRangeLabel}</span>

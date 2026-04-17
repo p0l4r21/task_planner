@@ -47,6 +47,29 @@ class ProjectRow(Base):
     updated_at = Column(String, nullable=False)
 
 
+class IdeaRow(Base):
+    __tablename__ = "ideas"
+
+    id = Column(String, primary_key=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    summary = Column(Text, default="")
+    current_state = Column(Text, default="")
+    proposed_change = Column(Text, default="")
+    why_it_matters = Column(Text, default="")
+    status = Column(String, default="captured", index=True)
+    tags = Column(String, default="")
+    notes = Column(Text, default="")
+    created_at = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
+    linked_project_ids = Column(String, default="")
+    linked_task_ids = Column(String, default="")
+    linked_milestone_ids = Column(String, default="")
+    linked_idea_ids = Column(String, default="")
+    links_json = Column(Text, default="")
+    converted_project_id = Column(String, nullable=True)
+
+
 class MilestoneRow(Base):
     __tablename__ = "milestones"
 

@@ -34,8 +34,6 @@ services:
     build: ./frontend
     container_name: task-planner-frontend
     restart: unless-stopped
-    # Tiny httpd serves the static files so Caddy can reverse_proxy to it
-    entrypoint: ["sh", "-c", "apk add --no-cache darkhttpd >/dev/null 2>&1 && darkhttpd /srv --port 3080 --no-listing"]
     networks:
       - caddy_net
 

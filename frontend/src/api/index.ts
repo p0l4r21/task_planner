@@ -3,11 +3,13 @@ import type {
   Project, ProjectCreate, ProjectUpdate, ProjectCreateWithMilestones,
   Milestone, MilestoneCreate, MilestoneUpdate, InlineMilestoneCreate,
   ProjectProgress, CalendarMilestone, ProjectsSummary,
+  Idea, IdeaCreate, IdeaUpdate,
 } from '../types';
 
 const BASE = '/api/tasks';
 const PROJ = '/api/projects';
 const MS = '/api/milestones';
+const IDEAS = '/api/ideas';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -173,5 +175,36 @@ export const api = {
   // Projects dashboard summary
   getProjectsSummary(): Promise<ProjectsSummary> {
     return request<ProjectsSummary>(`${PROJ}/summary`);
+  },
+
+  // ===================================================================
+  // Ideas
+  // ===================================================================
+
+  listIdeas(params?: Record<string, string>): Promise<Idea[]> {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Idea[]>(`${IDEAS}${qs}`);
+  },
+
+  getIdea(id: string): Promise<Idea> {
+    return request<Idea>(`${IDEAS}/${id}`);
+  },
+
+  createIdea(data: IdeaCreate): Promise<Idea> {
+    return request<Idea>(IDEAS, { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  updateIdea(id: string, data: IdeaUpdate): Promise<Idea> {
+    return request<Idea>(`${IDEAS}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  deleteIdea(id: string): Promise<void> {
+    return request<void>(`${IDEAS}/${id}`, { method: 'DELETE' });
+  },
+
+  convertIdea(id: string, projectId: string): Promise<Idea> {
+    return request<Idea>(`${IDEAS}/${id}/convert`, {
+      method: 'POST', body: JSON.stringify({ project_id: projectId }),
+    });
   },
 };

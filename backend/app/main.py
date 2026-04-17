@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import init_db
 from .routes.tasks import router as tasks_router
 from .routes.projects import router as projects_router
+from .routes.ideas import router as ideas_router
 
 app = FastAPI(title="Task Planner", version="1.0.0")
 
@@ -26,6 +27,7 @@ app.add_middleware(
 
 app.include_router(tasks_router)
 app.include_router(projects_router)
+app.include_router(ideas_router)
 
 
 @app.on_event("startup")

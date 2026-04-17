@@ -6,6 +6,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Serve stage — static files served by Caddy (copied in docker-compose)
-FROM alpine:3.20
+# Serve stage — Caddy with SPA fallback
+FROM caddy:2-alpine
 COPY --from=build /app/dist /srv
+COPY Caddyfile.container /etc/caddy/Caddyfile

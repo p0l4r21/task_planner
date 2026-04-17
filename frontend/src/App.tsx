@@ -5,6 +5,8 @@ import CompletedTasksPage from './pages/CompletedTasksPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import CalendarPage from './pages/CalendarPage';
+import IdeasPage from './pages/IdeasPage';
+import IdeaDetailPage from './pages/IdeaDetailPage';
 import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
@@ -20,6 +22,7 @@ export default function App() {
         </div>
         <nav className="top-bar-nav">
           <NavLink to="/" end>Planner</NavLink>
+          <NavLink to="/ideas">Ideas</NavLink>
           <NavLink to="/calendar">Calendar</NavLink>
           <NavLink to="/completed">Completed</NavLink>
           <NavLink to="/settings">Settings</NavLink>
@@ -29,6 +32,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tasks" element={<ActiveTasksPage />} />
+          <Route path="/ideas" element={<IdeasPage />} />
+          <Route path="/ideas/:ideaId" element={<IdeaDetailPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />

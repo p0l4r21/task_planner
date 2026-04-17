@@ -34,7 +34,9 @@ def init_db():
 
     inspector = inspect(engine)
     task_columns = {column["name"] for column in inspector.get_columns("tasks")}
+    idea_columns = {column["name"] for column in inspector.get_columns("ideas")}
     alter_statements = []
+    post_alter_statements = []
 
     if "project_id" not in task_columns:
         alter_statements.append("ALTER TABLE tasks ADD COLUMN project_id VARCHAR")
@@ -42,10 +44,21 @@ def init_db():
         alter_statements.append("ALTER TABLE tasks ADD COLUMN parent_milestone_id VARCHAR")
     if "hierarchy_level" not in task_columns:
         alter_statements.append("ALTER TABLE tasks ADD COLUMN hierarchy_level INTEGER DEFAULT 0")
+    if "summary" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN summary TEXT DEFAULT ''")
+        post_alter_statements.append("UPDATE ideas SET summary = COALESCE(NULLIF(description, ''), '') WHERE summary IS NULL OR summary = ''")
+    if "current_state" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN current_state TEXT DEFAULT ''")
+    if "proposed_change" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN proposed_change TEXT DEFAULT ''")
+    if "why_it_matters" not in idea_columns:
+        alter_statements.append("ALTER TABLE ideas ADD COLUMN why_it_matters TEXT DEFAULT ''")
 
     if alter_statements:
         with engine.begin() as conn:
             for statement in alter_statements:
+                conn.execute(text(statement))
+            for statement in post_alter_statements:
                 conn.execute(text(statement))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_project_id ON tasks (project_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_parent_milestone_id ON tasks (parent_milestone_id)"))

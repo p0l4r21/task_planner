@@ -3,6 +3,10 @@ import { type PlannerDrawerState } from '../components/PlannerDrawer';
 import WeekBar from '../components/WeekBar';
 import RightPanel from '../components/RightPanel';
 import LaneQuickAdd from '../components/LaneQuickAdd';
+import InsightsPanel from '../components/InsightsPanel';
+import WorkspaceTabs, { type WorkspaceTab } from '../components/WorkspaceTabs';
+import ProjectsView from '../components/ProjectsView';
+import InsightsView from '../components/InsightsView';
 import { api } from '../api';
 import { useProjects } from '../hooks/useProjects';
 import { useSummary, useTasks } from '../hooks/useTasks';
@@ -55,13 +59,13 @@ export default function DashboardPage() {
     update: updateProject,
     refresh: refreshProjects,
   } = useProjects();
-
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [weekOffset, setWeekOffset] = useState(0);
   const [drawerState, setDrawerState] = useState<PlannerDrawerState | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [milestonesByProject, setMilestonesByProject] = useState<Record<string, Milestone[]>>({});
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('tasks');
 
   const activeProjects = useMemo(() => {
     const openProjects = projects.filter(project => project.status !== 'completed');
@@ -278,70 +282,98 @@ export default function DashboardPage() {
           priority: (patch.priority ?? current.priority) as FilterState['priority'],
           projectId: patch.projectId ?? current.projectId,
         }))}
+        workspaceTabs={<WorkspaceTabs value={workspaceTab} onChange={setWorkspaceTab} />}
       />
 
+      {workspaceTab === 'tasks' && <InsightsPanel projects={projects} tasks={tasks} />}
+
       <div className="planner-body">
-        {/* Board — the primary content area */}
-        <section className="planner-board-panel">
-          <div className="planner-board">
-            {PLANNER_LANES.map(lane => {
-              const isDroppable = lane !== 'overdue';
-              return (
-                <div
-                  key={lane}
-                  className={`planner-lane planner-lane-${lane}${lane === 'today' ? ' planner-lane-today' : ''}`}
-                  onDragOver={isDroppable ? (event => event.preventDefault()) : undefined}
-                  onDrop={isDroppable ? (() => void handleDropToLane(lane)) : undefined}
-                >
-                  <div className="planner-lane-header">
-                    <span className="planner-lane-title">{LANE_LABELS[lane]}</span>
-                    <span className="planner-lane-count">{laneGroups[lane].length}</span>
-                  </div>
+        {/* Main content area — tabs switch the view */}
+        {workspaceTab === 'tasks' && (
+          <section className="planner-board-panel">
+            <div className="planner-board">
+              {PLANNER_LANES.map(lane => {
+                const isDroppable = lane !== 'overdue';
+                return (
+                  <div
+                    key={lane}
+                    className={`planner-lane planner-lane-${lane}${lane === 'today' ? ' planner-lane-today' : ''}`}
+                    onDragOver={isDroppable ? (event => event.preventDefault()) : undefined}
+                    onDrop={isDroppable ? (() => void handleDropToLane(lane)) : undefined}
+                  >
+                    <div className="planner-lane-header">
+                      <span className="planner-lane-title">{LANE_LABELS[lane]}</span>
+                      <span className="planner-lane-count">{laneGroups[lane].length}</span>
+                    </div>
 
-                  <div className="planner-lane-body">
-                    {laneGroups[lane].length === 0 && (
-                      <div className="planner-lane-empty">
-                        {loading ? 'Loading…' : lane === 'overdue' ? 'No overdue tasks' : 'Drop work here'}
-                      </div>
-                    )}
-                    {laneGroups[lane].map(task => (
-                      <article
-                        key={task.id}
-                        className={`planner-task-card priority-${task.priority}${lane === 'later' ? ` bucket-${task.bucket}` : ''}`}
-                        draggable
-                        onDragStart={event => {
-                          event.dataTransfer.setData('text/plain', task.id);
-                          setDragTaskId(task.id);
-                        }}
-                        onClick={() => setDrawerState({ type: 'task-edit', task })}
-                      >
-                        <span className="planner-task-title">{task.title}</span>
-                        <div className="planner-task-meta">
-                          {task.project && <span className="tag tag-project">{task.project}</span>}
-                          {task.due_date && <span className="tag tag-due">{task.due_date.slice(0, 10)}</span>}
-                          {lane === 'later' && (task.bucket === 'incoming' || task.bucket === 'backlog') && (
-                            <span className={`tag tag-bucket-${task.bucket}`}>{task.bucket}</span>
-                          )}
+                    <div className="planner-lane-body">
+                      {laneGroups[lane].length === 0 && (
+                        <div className="planner-lane-empty">
+                          {loading ? 'Loading…' : lane === 'overdue' ? 'No overdue tasks' : 'Drop work here'}
                         </div>
-                        <div className="planner-task-actions">
-                          <Button variant="ghost" size="xs" className="text-green-500 hover:bg-green-500/10" onClick={e => { e.stopPropagation(); void handleCompleteTask(task); }}>Done</Button>
-                          <Button variant="ghost" size="xs" className="text-destructive hover:bg-destructive/10" onClick={e => { e.stopPropagation(); void handleDeleteTask(task); }}>Del</Button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                      )}
+                      {laneGroups[lane].map(task => (
+                        <article
+                          key={task.id}
+                          className={`planner-task-card priority-${task.priority}${lane === 'later' ? ` bucket-${task.bucket}` : ''}`}
+                          draggable
+                          onDragStart={event => {
+                            event.dataTransfer.setData('text/plain', task.id);
+                            setDragTaskId(task.id);
+                          }}
+                          onClick={() => setDrawerState({ type: 'task-edit', task })}
+                        >
+                          <span className="planner-task-title">{task.title}</span>
+                          <div className="planner-task-meta">
+                            {task.project && <span className="tag tag-project">{task.project}</span>}
+                            {task.due_date && <span className="tag tag-due">{task.due_date.slice(0, 10)}</span>}
+                            {lane === 'later' && (task.bucket === 'incoming' || task.bucket === 'backlog') && (
+                              <span className={`tag tag-bucket-${task.bucket}`}>{task.bucket}</span>
+                            )}
+                          </div>
+                          <div className="planner-task-actions">
+                            <Button variant="ghost" size="xs" className="text-green-500 hover:bg-green-500/10" onClick={e => { e.stopPropagation(); void handleCompleteTask(task); }}>Done</Button>
+                            <Button variant="ghost" size="xs" className="text-destructive hover:bg-destructive/10" onClick={e => { e.stopPropagation(); void handleDeleteTask(task); }}>Del</Button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
 
-                  <LaneQuickAdd
-                    defaultBucket={bucketForLane(lane)}
-                    defaultScheduledDate={scheduledDateForLane(lane)}
-                    defaultProjectId={selectedProjectId || undefined}
-                    onCreateTask={handleCreateTask}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                    <LaneQuickAdd
+                      defaultBucket={bucketForLane(lane)}
+                      defaultScheduledDate={scheduledDateForLane(lane)}
+                      defaultProjectId={selectedProjectId || undefined}
+                      onCreateTask={handleCreateTask}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {workspaceTab === 'projects' && (
+          <section className="planner-board-panel">
+            <ProjectsView
+              projects={projectOptions}
+              tasks={tasks}
+              milestonesByProject={milestonesByProject}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={setSelectedProjectId}
+              onSetDrawerState={setDrawerState}
+            />
+          </section>
+        )}
+
+        {workspaceTab === 'insights' && (
+          <section className="planner-board-panel">
+            <InsightsView
+              projects={projects}
+              tasks={tasks}
+              milestonesByProject={milestonesByProject}
+            />
+          </section>
+        )}
 
         {/* Right panel — workspace + editor */}
         <RightPanel
